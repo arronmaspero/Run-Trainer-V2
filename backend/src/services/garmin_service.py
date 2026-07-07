@@ -226,12 +226,36 @@ def push_plan_to_garmin(user_id: str, db: Session) -> Dict[str, Any]:
     # Generate structured workout list using Gemini in a single batch call
     session_list_text = []
     for s in future_sessions:
+        # Safely parse DB JSON fields for step instructions
+        warm_up_steps = []
+        main_set_steps = []
+        cool_down_steps = []
+        try:
+            if s.warm_up_json:
+                warm_up_steps = json.loads(s.warm_up_json)
+        except:
+            pass
+        try:
+            if s.main_set_json:
+                main_set_steps = json.loads(s.main_set_json)
+        except:
+            pass
+        try:
+            if s.cool_down_json:
+                cool_down_steps = json.loads(s.cool_down_json)
+        except:
+            pass
+
         session_list_text.append({
             "id": s.id,
             "date": s.date.isoformat(),
             "type": s.type,
             "name": s.name,
             "description": s.description,
+            "warm_up_instructions": warm_up_steps,
+            "main_set_instructions": main_set_steps,
+            "cool_down_instructions": cool_down_steps,
+            "garmin_instructions": s.garmin_instructions_text,
             "duration_minutes": s.duration_minutes,
             "distance_miles": s.distance_miles,
             "target_pace_range": s.target_pace_range,
@@ -244,17 +268,14 @@ def push_plan_to_garmin(user_id: str, db: Session) -> Dict[str, Any]:
         "Input Sessions:\n"
         f"{json.dumps(session_list_text, indent=2)}\n\n"
         "For each input session:\n"
-        "1. Create a structured workout containing steps: warmup, interval, recovery, cooldown.\n"
-        "2. Parse intervals/repeats if the session text describes them (e.g., '4x 800m with 2 min recovery' becomes a repeat group with 4 iterations, containing a distance-based run step of 800m (0.50 miles) and a time-based recovery step of 120 seconds).\n"
-        "3. Set end conditions correctly: time (value in seconds) or distance (value in miles) or lap_button (value 0.0).\n"
-        "   - Default warmup and cooldown to lap_button (value 0.0) so the runner can start/stop them manually, or time/distance if specified.\n"
-        "4. Calculate target values for speed (meters per second) if the target_type is 'pace':\n"
+        "1. Create a structured workout matching the instructions in warm_up_instructions, main_set_instructions, cool_down_instructions, and garmin_instructions.\n"
+        "2. Parse intervals/repeats if described. For example, if main_set_instructions or garmin_instructions says 'Run 3 x 0.5-mile intervals with 2-minute recovery jogs', generate a repeat group with 3 iterations containing a distance-based run step of 0.5 miles and a time-based recovery step of 120 seconds.\n"
+        "3. Crucially, do NOT omit or ignore the cool-down instructions! If cool_down_instructions or garmin_instructions specifies a cool-down distance/time (e.g. 'Cool down 1.0 mile' or 'Run 1.0 mile easy cool-down'), you MUST generate the final cooldown step (with type 'cooldown') after the repeat group.\n"
+        "4. Set end conditions correctly: time (value in seconds) or distance (value in miles) or lap_button (value 0.0).\n"
+        "   - Warmup and cooldown steps can be distance-based if a distance is specified (e.g. 'Warm up 1.0 mile' -> distance=1.0), or lap_button if not specified.\n"
+        "5. Calculate target values for speed (meters per second) if the target_type is 'pace':\n"
         "   - Formula: speed (m/s) = 1609.34 / (pace in seconds per mile).\n"
         "   - Slower pace velocity goes to target_value_low. Faster pace velocity goes to target_value_high.\n"
-        "   - Example: Pace 7:30 to 8:00 per mile:\n"
-        "     - 8:00 pace = 480 sec/mi -> Speed = 1609.34 / 480 = 3.35 m/s (slower speed, maps to target_value_low).\n"
-        "     - 7:30 pace = 450 sec/mi -> Speed = 1609.34 / 450 = 3.58 m/s (faster speed, maps to target_value_high).\n"
-        "5. Calculate target values for heart rate (BPM) if target_type is 'heart_rate' (e.g., 140 to 155 BPM -> low=140.0, high=155.0).\n"
         "6. Ensure the estimatedDurationInSecs is the sum of all steps' durations (for lap_button steps, assume a reasonable estimate like 600 seconds for warmups/cooldowns).\n"
     )
     
