@@ -271,6 +271,23 @@ def push_plan_to_garmin(user_id: str, db: Session) -> Dict[str, Any]:
     except Exception as login_err:
         raise Exception(f"Failed to log in to Garmin Connect. Please verify your credentials: {str(login_err)}")
         
+    # Clear existing scheduled workouts on the dates we are about to push to prevent duplicates
+    target_dates = {s.date.isoformat() for s in future_sessions}
+    months_to_fetch = {(s.date.year, s.date.month) for s in future_sessions}
+    
+    for y, m in months_to_fetch:
+        try:
+            scheduled = garmin_client.get_scheduled_workouts(y, m)
+            if scheduled and isinstance(scheduled, list):
+                for item in scheduled:
+                    cal_date = item.get("calendarDate")
+                    schedule_id = item.get("workoutScheduleId")
+                    if cal_date in target_dates and schedule_id:
+                        garmin_client.unschedule_workout(schedule_id)
+        except Exception as fetch_err:
+            import logging
+            logging.getLogger(__name__).warning(f"Failed to clear existing calendar workouts for {y}-{m}: {fetch_err}")
+            
     synced_count = 0
     # Process and upload each structured workout
     for workout in parsed_response.workouts:

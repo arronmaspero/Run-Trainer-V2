@@ -156,6 +156,10 @@ def test_sync_to_garmin_endpoint_success(mock_get_gemini, mock_garmin, client, d
     # Mock Garmin client
     mock_instance = MagicMock()
     mock_instance.upload_workout.return_value = {"workoutId": 9999}
+    mock_instance.get_scheduled_workouts.return_value = [
+        {"calendarDate": (date.today() + timedelta(days=1)).isoformat(), "workoutScheduleId": 8888}
+    ]
+    mock_instance.unschedule_workout.return_value = {}
     mock_garmin.return_value = mock_instance
     
     # Mock Gemini client
@@ -257,3 +261,6 @@ def test_sync_to_garmin_endpoint_success(mock_get_gemini, mock_garmin, client, d
     assert resp.json()["status"] == "success"
     assert resp.json()["synced_count"] == 1
     assert "Successfully pushed 1 structured running workouts" in resp.json()["message"]
+    
+    # Assert calendar cleaning unscheduled the old workout on that date
+    mock_instance.unschedule_workout.assert_called_once_with(8888)
