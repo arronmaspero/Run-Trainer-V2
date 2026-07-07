@@ -1,13 +1,19 @@
 import json
+from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
+from pydantic import BaseModel
 
 from src.models import get_db
 from src.api.auth import get_current_user
 from src.models.user import User, AthleteProfile
 from src.models.activity import ConnectedAccount, Activity
 from src.models.plan import TrainingPlan, TrainingSession
+
+class GarminCredentialsRequest(BaseModel):
+    email: str
+    password: str
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 
@@ -33,6 +39,68 @@ def revoke_strava(
         
     db.commit()
     return {"status": "success", "message": "Strava integration revoked successfully."}
+
+@router.post("/garmin")
+def connect_garmin(
+    data: GarminCredentialsRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    from src.services.garmin_service import test_garmin_login, encrypt_password
+    
+    # 1. Verify credentials by logging in
+    try:
+        test_garmin_login(data.email, data.password)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+        
+    # 2. Encrypt password
+    encrypted_pw = encrypt_password(data.password)
+    
+    # 3. Save/update ConnectedAccount in DB
+    account = db.query(ConnectedAccount).filter(
+        ConnectedAccount.user_id == current_user.id,
+        ConnectedAccount.provider == "garmin"
+    ).first()
+    
+    if not account:
+        account = ConnectedAccount(
+            user_id=current_user.id,
+            provider="garmin"
+        )
+        db.add(account)
+        
+    account.access_token = data.email
+    account.refresh_token = encrypted_pw
+    account.expires_at = datetime.utcnow() + timedelta(days=365)
+    account.last_sync_at = datetime.utcnow()
+    
+    db.commit()
+    return {"status": "success", "message": "Garmin Connect account successfully connected!"}
+
+@router.delete("/garmin")
+def disconnect_garmin(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    account = db.query(ConnectedAccount).filter(
+        ConnectedAccount.user_id == current_user.id,
+        ConnectedAccount.provider == "garmin"
+    ).first()
+    
+    if not account:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No connected Garmin account found."
+        )
+        
+    db.delete(account)
+    db.commit()
+    return {"status": "success", "message": "Garmin Connect integration revoked successfully."}
+
 
 @router.get("/export")
 def export_user_data(

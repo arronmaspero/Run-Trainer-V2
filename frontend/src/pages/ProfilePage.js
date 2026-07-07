@@ -142,6 +142,43 @@ export const ProfilePage = {
             </button>
           </div>
 
+          <!-- Garmin Connect Setup -->
+          <h3 style="font-family: var(--font-display); font-size: 1.25rem; margin-top: 2rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">Garmin Connect Setup</h3>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: -0.5rem;">
+            Enter your Garmin Connect credentials to push structured workouts to your watch calendar.
+          </p>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); padding: 0.75rem 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+            <span style="font-size: 0.95rem; font-weight: 600; color: var(--text-primary);">Connection Status</span>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: ${p.garmin_connected ? 'var(--color-easy)' : 'var(--text-muted)'};"></span>
+              <span style="font-size: 0.9rem; font-weight: bold; color: ${p.garmin_connected ? 'var(--color-easy)' : 'var(--text-secondary)'};">
+                ${p.garmin_connected ? 'Connected' : 'Disconnected'}
+              </span>
+            </div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+            <label style="font-size: 0.9rem; font-weight: 500; color: var(--text-secondary);">Garmin Email</label>
+            <input type="email" id="prof-garmin-email" value="${p.garmin_email || ""}" placeholder="e.g. runner@garmin.com" style="padding: 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: rgba(15, 23, 42, 0.4); color: white; outline: none; font-size: 1rem;">
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+            <label style="font-size: 0.9rem; font-weight: 500; color: var(--text-secondary);">Garmin Password</label>
+            <input type="password" id="prof-garmin-password" placeholder="${p.garmin_connected ? '•••••••• (Connected)' : 'Enter Garmin password'}" style="padding: 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: rgba(15, 23, 42, 0.4); color: white; outline: none; font-size: 1rem;">
+          </div>
+
+          <div style="display: flex; gap: 1rem; margin-top: 0.5rem;">
+            <button id="btn-connect-garmin" class="btn" style="flex: 1; background: #007cc2; color: white; justify-content: center; font-size: 0.95rem; display: flex; align-items: center; gap: 0.5rem; border-radius: var(--radius-sm);">
+              <i data-lucide="link" style="width: 16px; height: 16px;"></i> ${p.garmin_connected ? 'Update Credentials' : 'Connect Garmin'}
+            </button>
+            ${p.garmin_connected ? `
+              <button id="btn-disconnect-garmin" class="btn btn-secondary" style="flex: 1; justify-content: center; font-size: 0.95rem; display: flex; align-items: center; gap: 0.5rem; border-radius: var(--radius-sm); border-color: rgba(244, 63, 94, 0.3); color: var(--color-intervals);">
+                <i data-lucide="unlink" style="width: 16px; height: 16px;"></i> Disconnect
+              </button>
+            ` : ''}
+          </div>
+
           <button type="submit" class="btn btn-primary" style="justify-content: center; margin-top: 1.5rem; font-size: 1.05rem;">
             Save Changes
           </button>
@@ -259,6 +296,51 @@ export const ProfilePage = {
         try {
           await api.revokeStrava();
           window.showToast("Strava credentials revoked successfully!");
+          navigateTo("#profile");
+        } catch (err) {
+          window.showToast(err.message, "error");
+        }
+      };
+    }
+
+    const btnConnectGarmin = document.getElementById("btn-connect-garmin");
+    if (btnConnectGarmin) {
+      btnConnectGarmin.onclick = async (e) => {
+        e.preventDefault();
+        const email = document.getElementById("prof-garmin-email").value.trim();
+        const password = document.getElementById("prof-garmin-password").value;
+        
+        if (!email || !password) {
+          window.showToast("Please enter both Garmin email and password.", "error");
+          return;
+        }
+        
+        // Show loading state
+        const originalText = btnConnectGarmin.innerHTML;
+        btnConnectGarmin.disabled = true;
+        btnConnectGarmin.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="width: 1rem; height: 1rem; border: 2px solid white; border-top: 2px solid transparent; border-radius: 50%; display: inline-block; animation: spin 1s linear infinite; margin-right: 0.5rem; vertical-align: middle;"></span> Connecting...`;
+        
+        try {
+          await api.connectGarmin(email, password);
+          window.showToast("Garmin Connect account successfully connected!", "success");
+          navigateTo("#profile");
+        } catch (err) {
+          window.showToast(err.message || "Failed to connect to Garmin Connect.", "error");
+        } finally {
+          btnConnectGarmin.disabled = false;
+          btnConnectGarmin.innerHTML = originalText;
+        }
+      };
+    }
+
+    const btnDisconnectGarmin = document.getElementById("btn-disconnect-garmin");
+    if (btnDisconnectGarmin) {
+      btnDisconnectGarmin.onclick = async (e) => {
+        e.preventDefault();
+        if (!confirm("Are you sure you want to disconnect your Garmin Connect integration?")) return;
+        try {
+          await api.disconnectGarmin();
+          window.showToast("Garmin credentials disconnected successfully!");
           navigateTo("#profile");
         } catch (err) {
           window.showToast(err.message, "error");

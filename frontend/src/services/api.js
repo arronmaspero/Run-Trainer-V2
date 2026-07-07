@@ -221,5 +221,33 @@ export const api = {
       headers: getHeaders()
     });
     return handleResponse(res, "Failed to delete account");
+  },
+
+  async connectGarmin(email, password) {
+    const res = await fetch(`${API_BASE}/settings/garmin`, {
+      method: "POST",
+      cache: "no-store",
+      headers: getHeaders(),
+      body: JSON.stringify({ email, password })
+    });
+    return handleResponse(res, "Failed to connect Garmin Connect");
+  },
+
+  async disconnectGarmin() {
+    const res = await fetch(`${API_BASE}/settings/garmin`, {
+      method: "DELETE",
+      cache: "no-store",
+      headers: getHeaders()
+    });
+    return handleResponse(res, "Failed to disconnect Garmin Connect");
+  },
+
+  async pushPlanToGarmin() {
+    const res = await fetch(`${API_BASE}/plans/push-garmin`, {
+      method: "POST",
+      cache: "no-store",
+      headers: getHeaders()
+    });
+    return handleResponse(res, "Failed to push structured workouts to Garmin");
   }
 };

@@ -184,6 +184,24 @@ export const CurrentPlanPage = {
       `;
     }
 
+    if (this.state.isSyncingGarmin) {
+      return `
+        <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px); z-index: 9999; display: flex; align-items: center; justify-content: center; color: white;" class="fade-in">
+          <div style="max-width: 500px; padding: 3rem; text-align: center; background: #1e293b; border-radius: var(--radius-lg); border: 1px solid var(--border-color); box-shadow: var(--shadow-2xl);">
+            <div style="width: 70px; height: 70px; border: 4px solid var(--border-color); border-top: 4px solid #007cc2; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 2rem;"></div>
+            <h2 style="font-family: var(--font-display); font-size: 1.8rem; font-weight: 700; margin-bottom: 0.5rem;">Garmin Calendar Sync</h2>
+            <p style="color: #007cc2; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700; margin-bottom: 1.5rem;">Connecting to Garmin Connect</p>
+            <p style="color: var(--text-secondary); font-size: 1.1rem; line-height: 1.5; min-height: 50px;">
+              Generating structured watch workouts and scheduling them on your Garmin calendar...
+            </p>
+            <style>
+              @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+            </style>
+          </div>
+        </div>
+      `;
+    }
+
     // Calculations
     const today = new Date();
     today.setHours(0,0,0,0);
@@ -339,6 +357,20 @@ export const CurrentPlanPage = {
             <i data-lucide="refresh-cw" style="color: var(--accent-secondary); width: 18px; height: 18px;"></i>
             Update Plan
           </button>
+
+          <button id="btn-sync-garmin" onclick="window.CurrentPlanPage.handleSyncGarmin()" style="
+            font-size: 1rem; padding: 0.8rem 1.75rem;
+            display: inline-flex; align-items: center; gap: 0.6rem;
+            background: rgba(0, 124, 194, 0.1);
+            border: 1px solid rgba(0, 124, 194, 0.4); border-radius: 12px;
+            color: var(--text-primary); cursor: pointer; font-weight: 600;
+            transition: all 0.2s ease; box-shadow: 0 2px 12px rgba(0, 124, 194, 0.1);
+          "
+          onmouseover="this.style.background='rgba(0, 124, 194, 0.2)'; this.style.borderColor='rgba(0, 124, 194, 0.7)'"
+          onmouseout="this.style.background='rgba(0, 124, 194, 0.1)'; this.style.borderColor='rgba(0, 124, 194, 0.4)'">
+            <i data-lucide="arrow-up-right" style="color: #007cc2; width: 18px; height: 18px;"></i>
+            Sync to Garmin
+          </button>
         </div>
 
       </div>
@@ -367,6 +399,26 @@ export const CurrentPlanPage = {
       window.showToast(err.message, "error");
     } finally {
       this.state.isEvaluating = false;
+      this.updateView();
+    }
+  },
+
+  async handleSyncGarmin() {
+    if (!this.state.profile || !this.state.profile.garmin_connected) {
+      window.showToast("Please set up your Garmin Connect credentials in Profile Settings first.", "error");
+      return;
+    }
+
+    this.state.isSyncingGarmin = true;
+    this.updateView();
+
+    try {
+      const res = await api.pushPlanToGarmin();
+      window.showToast(res.message || "Workouts successfully synced to Garmin Connect!", "success");
+    } catch (err) {
+      window.showToast(err.message || "Failed to push workouts to Garmin Connect.", "error");
+    } finally {
+      this.state.isSyncingGarmin = false;
       this.updateView();
     }
   }
