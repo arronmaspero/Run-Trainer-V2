@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AuraRun - Premium AI Running Coach</title>
+  <link rel="stylesheet" href="/src/index.css">
+  <!-- Load Lucide icons from CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+  <!-- Header / Navigation -->
+  <header class="glass-panel" style="position: sticky; top: 0; z-index: 100; margin: 1rem 1rem 0; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; backdrop-filter: blur(16px); background: rgba(15, 23, 42, 0.65);">
+    <div style="display: flex; align-items: center; gap: 0.75rem; cursor: pointer;" onclick="window.location.hash = '#home'">
+      <div style="background: var(--gradient-premium); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-family: var(--font-display); font-size: 1.25rem;">
+        A
+      </div>
+      <span style="font-family: var(--font-display); font-weight: 800; font-size: 1.5rem; background: var(--gradient-premium); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">AuraRun</span>
+    </div>
+    
+    <nav style="display: flex; gap: 1.5rem; align-items: center;">
+      <a href="#home" id="nav-home" class="nav-link" style="color: var(--text-secondary); text-decoration: none; font-weight: 500; font-size: 0.95rem; transition: var(--transition-smooth);">Home</a>
+      <a href="#current-plan" id="nav-current-plan" class="nav-link" style="color: var(--text-secondary); text-decoration: none; font-weight: 500; font-size: 0.95rem; display: none; transition: var(--transition-smooth);">Current Plan</a>
+      
+      <!-- Unit Switcher Toggle -->
+      <button id="btn-unit-toggle" class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;" onclick="window.toggleUnitPreference()">Unit: mi</button>
+
+      <div id="nav-auth-buttons">
+        <a href="#login" class="btn btn-secondary" style="padding: 0.5rem 1.25rem; font-size: 0.9rem;">Sign In</a>
+      </div>
+      <div id="nav-user-profile" style="display: none; align-items: center; gap: 0.75rem;">
+        <a href="#profile" style="color: var(--text-secondary); text-decoration: none; font-weight: 500; font-size: 0.95rem; display: flex; align-items: center; gap: 0.35rem; transition: var(--transition-smooth); cursor: pointer;" onmouseover="this.style.color='var(--accent-secondary)'" onmouseout="this.style.color='var(--text-secondary)'">
+          <i data-lucide="user" style="width: 16px; height: 16px;"></i>
+          <span id="nav-username">User</span>
+        </a>
+        <button id="btn-logout" class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;">Sign Out</button>
+      </div>
+    </nav>
+  </header>
+
+  <!-- Notification Toast Container -->
+  <div id="toast-container" style="position: fixed; bottom: 2rem; right: 2rem; z-index: 1000; display: flex; flex-direction: column; gap: 0.75rem;"></div>
+
+  <!-- Main Content Shell -->
+  <main id="app-view" class="app-container fade-in" style="min-height: 80vh;"></main>
+
+  <!-- Footer -->
+  <footer style="margin-top: 5rem; border-top: 1px solid var(--border-color); padding: 2rem 0; text-align: center; color: var(--text-muted); font-size: 0.9rem;">
+    <p>&copy; 2026 AuraRun. Personal AI running coach. Not a medical device.</p>
+  </footer>
+
+  <!-- App Script Entrypoint -->
+  <script type="module" src="/src/main.js?v=2"></script>
+</body>
+</html>

@@ -1,0 +1,40 @@
+# SQLite Database
+running_coach.db
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+
+# Environments/Secrets
+.env
+.env.local
+.env.*.local
+
+# Python caches and outputs
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.specify/
+.agent/
+.agents/
+
+# Node/Frontend
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Logs
+logs/
+*.log
+
+# Editor configurations
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
