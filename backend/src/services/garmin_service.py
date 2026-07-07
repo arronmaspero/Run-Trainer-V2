@@ -55,10 +55,19 @@ def test_garmin_login(email: str, password: str) -> bool:
 # Gemini Structured Workout Parser Schema
 # -------------------------------------------------------------
 
+class GeminiSubStep(BaseModel):
+    step_type: str = Field(default="interval", description="Step type: warmup, cooldown, interval, recovery, rest, other")
+    end_condition: str = Field(default="time", description="End condition trigger: time, distance, lap_button")
+    end_condition_value: float = Field(default=0.0, description="Duration value: seconds if time, miles if distance, 0.0 if lap_button")
+    target_type: str = Field(default="no_target", description="Target type: no_target, pace, heart_rate")
+    target_value_low: float = Field(default=0.0, description="Slower velocity in m/s if pace, min HR in BPM if heart_rate, 0.0 otherwise")
+    target_value_high: float = Field(default=0.0, description="Faster velocity in m/s if pace, max HR in BPM if heart_rate, 0.0 otherwise")
+    description: str = Field(default="", description="Short instruction summary for the step")
+
 class GeminiWorkoutStep(BaseModel):
     is_repeat_group: bool = Field(description="True if this represents a repeat block containing sub-steps, False if a single step.")
     repeat_iterations: int = Field(default=1, description="Number of iterations if is_repeat_group is True.")
-    repeat_steps: Optional[List["GeminiWorkoutStep"]] = Field(default=None, description="Steps to repeat if is_repeat_group is True.")
+    repeat_steps: Optional[List[GeminiSubStep]] = Field(default=None, description="Sub-steps to repeat if is_repeat_group is True.")
 
     # Fields for normal individual step
     step_type: str = Field(default="interval", description="Step type: warmup, cooldown, interval, recovery, rest, other")
@@ -68,9 +77,6 @@ class GeminiWorkoutStep(BaseModel):
     target_value_low: float = Field(default=0.0, description="Slower velocity in m/s if pace, min HR in BPM if heart_rate, 0.0 otherwise")
     target_value_high: float = Field(default=0.0, description="Faster velocity in m/s if pace, max HR in BPM if heart_rate, 0.0 otherwise")
     description: str = Field(default="", description="Short instruction summary for the step")
-
-# Rebuild model for Pydantic v2 self-reference resolution
-GeminiWorkoutStep.model_rebuild()
 
 class GeminiGarminWorkout(BaseModel):
     session_id: str = Field(description="The unique database ID of the session")
@@ -91,10 +97,8 @@ def map_gemini_step_to_garmin(step: GeminiWorkoutStep, step_order: int) -> Union
     if step.is_repeat_group:
         sub_steps = []
         for idx, sub in enumerate(step.repeat_steps or []):
-            sub_mapped = map_gemini_step_to_garmin(sub, step_order=idx + 1)
-            # Repeat groups can only contain ExecutableSteps in Garmin Connect's client model
-            if isinstance(sub_mapped, ExecutableStep):
-                sub_steps.append(sub_mapped)
+            sub_mapped = _map_individual_step(sub, step_order=idx + 1)
+            sub_steps.append(sub_mapped)
         
         return RepeatGroup(
             stepOrder=step_order,
@@ -107,73 +111,77 @@ def map_gemini_step_to_garmin(step: GeminiWorkoutStep, step_order: int) -> Union
             }
         )
     else:
-        # Map step type
-        st_map = {
-            "warmup": (StepType.WARMUP, "warmup", 1),
-            "cooldown": (StepType.COOLDOWN, "cooldown", 2),
-            "interval": (StepType.INTERVAL, "interval", 3),
-            "recovery": (StepType.RECOVERY, "recovery", 4),
-            "rest": (StepType.REST, "rest", 5),
-            "other": (StepType.OTHER, "other", 7)
+        return _map_individual_step(step, step_order)
+
+def _map_individual_step(step: Union[GeminiWorkoutStep, GeminiSubStep], step_order: int) -> ExecutableStep:
+    """Helper to map a single step's fields to a Garmin ExecutableStep."""
+    # Map step type
+    st_map = {
+        "warmup": (StepType.WARMUP, "warmup", 1),
+        "cooldown": (StepType.COOLDOWN, "cooldown", 2),
+        "interval": (StepType.INTERVAL, "interval", 3),
+        "recovery": (StepType.RECOVERY, "recovery", 4),
+        "rest": (StepType.REST, "rest", 5),
+        "other": (StepType.OTHER, "other", 7)
+    }
+    st_id, st_key, st_order = st_map.get(step.step_type.lower(), (StepType.INTERVAL, "interval", 3))
+    
+    # Map end condition
+    ec_map = {
+        "lap_button": (ConditionType.LAP_BUTTON, "lap.button", 1),
+        "time": (ConditionType.TIME, "time", 2),
+        "distance": (ConditionType.DISTANCE, "distance", 3)
+    }
+    ec_id, ec_key, ec_order = ec_map.get(step.end_condition.lower(), (ConditionType.TIME, "time", 2))
+    
+    # Calculate condition value
+    ec_val = step.end_condition_value
+    if step.end_condition.lower() == "distance":
+        ec_val = round(step.end_condition_value * 1609.34, 2)  # Miles to meters
+    elif step.end_condition.lower() == "lap_button":
+        ec_val = 0.0
+        
+    # Map target type
+    tt_map = {
+        "no_target": (TargetType.NO_TARGET, "no.target", 1),
+        "pace": (TargetType.SPEED_ZONE, "speed.zone", 5), # Absolute pace/speed targets
+        "heart_rate": (TargetType.HEART_RATE_ZONE, "heart.rate.zone", 4)
+    }
+    tt_id, tt_key, tt_order = tt_map.get(step.target_type.lower(), (TargetType.NO_TARGET, "no.target", 1))
+    
+    # Initialize ExecutableStep
+    exec_step = ExecutableStep(
+        stepOrder=step_order,
+        stepType={
+            "stepTypeId": st_id,
+            "stepTypeKey": st_key,
+            "displayOrder": st_order
+        },
+        endCondition={
+            "conditionTypeId": ec_id,
+            "conditionTypeKey": ec_key,
+            "displayOrder": ec_order,
+            "displayable": True
+        },
+        endConditionValue=ec_val,
+        targetType={
+            "workoutTargetTypeId": tt_id,
+            "workoutTargetTypeKey": tt_key,
+            "displayOrder": tt_order
         }
-        st_id, st_key, st_order = st_map.get(step.step_type.lower(), (StepType.INTERVAL, "interval", 3))
+    )
+    
+    # Add target ranges if configured
+    if step.target_type.lower() == "pace" and step.target_value_high > 0:
+        # Set absolute speed targets in meters per second
+        exec_step.targetValueLow = step.target_value_low   # Slower velocity
+        exec_step.targetValueHigh = step.target_value_high # Faster velocity
+    elif step.target_type.lower() == "heart_rate" and step.target_value_high > 0:
+        # Set heart rate targets in BPM
+        exec_step.targetValueLow = step.target_value_low
+        exec_step.targetValueHigh = step.target_value_high
         
-        # Map end condition
-        ec_map = {
-            "lap_button": (ConditionType.LAP_BUTTON, "lap.button", 1),
-            "time": (ConditionType.TIME, "time", 2),
-            "distance": (ConditionType.DISTANCE, "distance", 3)
-        }
-        ec_id, ec_key, ec_order = ec_map.get(step.end_condition.lower(), (ConditionType.TIME, "time", 2))
-        
-        # Calculate condition value
-        ec_val = step.end_condition_value
-        if step.end_condition.lower() == "distance":
-            ec_val = round(step.end_condition_value * 1609.34, 2)  # Miles to meters
-        elif step.end_condition.lower() == "lap_button":
-            ec_val = 0.0
-            
-        # Map target type
-        tt_map = {
-            "no_target": (TargetType.NO_TARGET, "no.target", 1),
-            "pace": (TargetType.SPEED_ZONE, "speed.zone", 5), # Absolute pace/speed targets
-            "heart_rate": (TargetType.HEART_RATE_ZONE, "heart.rate.zone", 4)
-        }
-        tt_id, tt_key, tt_order = tt_map.get(step.target_type.lower(), (TargetType.NO_TARGET, "no.target", 1))
-        
-        # Initialize ExecutableStep
-        exec_step = ExecutableStep(
-            stepOrder=step_order,
-            stepType={
-                "stepTypeId": st_id,
-                "stepTypeKey": st_key,
-                "displayOrder": st_order
-            },
-            endCondition={
-                "conditionTypeId": ec_id,
-                "conditionTypeKey": ec_key,
-                "displayOrder": ec_order,
-                "displayable": True
-            },
-            endConditionValue=ec_val,
-            targetType={
-                "workoutTargetTypeId": tt_id,
-                "workoutTargetTypeKey": tt_key,
-                "displayOrder": tt_order
-            }
-        )
-        
-        # Add target ranges if configured
-        if step.target_type.lower() == "pace" and step.target_value_high > 0:
-            # Set absolute speed targets in meters per second
-            exec_step.targetValueLow = step.target_value_low   # Slower velocity
-            exec_step.targetValueHigh = step.target_value_high # Faster velocity
-        elif step.target_type.lower() == "heart_rate" and step.target_value_high > 0:
-            # Set heart rate targets in BPM
-            exec_step.targetValueLow = step.target_value_low
-            exec_step.targetValueHigh = step.target_value_high
-            
-        return exec_step
+    return exec_step
 
 # -------------------------------------------------------------
 # Plan Synchronization Service
