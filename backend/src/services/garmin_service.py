@@ -300,10 +300,25 @@ def push_plan_to_garmin(user_id: str, db: Session) -> Dict[str, Any]:
     except Exception as login_err:
         raise Exception(f"Failed to log in to Garmin Connect. Please verify your credentials: {str(login_err)}")
         
-    # Clear existing scheduled workouts on the dates we are about to push to prevent duplicates
-    target_dates = {s.date.isoformat() for s in future_sessions}
-    months_to_fetch = {(s.date.year, s.date.month) for s in future_sessions}
+    # Clear existing scheduled workouts that belong to AuraRun from today until the end of the plan
+    today_str = today.isoformat()
+    end_date_str = active_plan.end_date.isoformat() if active_plan.end_date else "2030-12-31"
     
+    months_to_fetch = []
+    curr_year = today.year
+    curr_month = today.month
+    end_year = active_plan.end_date.year if active_plan.end_date else today.year
+    end_month = active_plan.end_date.month if active_plan.end_date else today.month
+    
+    limit = 0
+    while (curr_year, curr_month) <= (end_year, end_month) and limit < 12:
+        months_to_fetch.append((curr_year, curr_month))
+        curr_month += 1
+        if curr_month > 12:
+            curr_month = 1
+            curr_year += 1
+        limit += 1
+        
     for y, m in months_to_fetch:
         try:
             scheduled = garmin_client.get_scheduled_workouts(y, m)
@@ -311,8 +326,23 @@ def push_plan_to_garmin(user_id: str, db: Session) -> Dict[str, Any]:
                 for item in scheduled:
                     cal_date = item.get("calendarDate")
                     schedule_id = item.get("workoutScheduleId")
-                    if cal_date in target_dates and schedule_id:
-                        garmin_client.unschedule_workout(schedule_id)
+                    
+                    if cal_date and today_str <= cal_date <= end_date_str and schedule_id:
+                        desc = item.get("description") or ""
+                        workout_obj = item.get("workout") or {}
+                        w_desc = workout_obj.get("description") or ""
+                        w_name = workout_obj.get("workoutName") or ""
+                        w_name_root = item.get("workoutName") or ""
+                        
+                        is_aurarun = (
+                            "AuraRun" in desc or
+                            "AuraRun" in w_desc or
+                            "AuraRun" in w_name or
+                            "AuraRun" in w_name_root
+                        )
+                        
+                        if is_aurarun:
+                            garmin_client.unschedule_workout(schedule_id)
         except Exception as fetch_err:
             import logging
             logging.getLogger(__name__).warning(f"Failed to clear existing calendar workouts for {y}-{m}: {fetch_err}")
@@ -340,7 +370,7 @@ def push_plan_to_garmin(user_id: str, db: Session) -> Dict[str, Any]:
         # Build Garmin running workout model
         running_workout = RunningWorkout(
             workoutName=workout.workoutName,
-            description=workout.description,
+            description=f"AuraRun: {workout.description}",
             estimatedDurationInSecs=workout.estimatedDurationInSecs,
             workoutSegments=[segment]
         )

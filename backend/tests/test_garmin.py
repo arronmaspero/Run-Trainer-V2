@@ -157,7 +157,11 @@ def test_sync_to_garmin_endpoint_success(mock_get_gemini, mock_garmin, client, d
     mock_instance = MagicMock()
     mock_instance.upload_workout.return_value = {"workoutId": 9999}
     mock_instance.get_scheduled_workouts.return_value = [
-        {"calendarDate": (date.today() + timedelta(days=1)).isoformat(), "workoutScheduleId": 8888}
+        {
+            "calendarDate": (date.today() + timedelta(days=1)).isoformat(),
+            "workoutScheduleId": 8888,
+            "description": "AuraRun: 30 mins recovery run"
+        }
     ]
     mock_instance.unschedule_workout.return_value = {}
     mock_garmin.return_value = mock_instance
@@ -262,5 +266,6 @@ def test_sync_to_garmin_endpoint_success(mock_get_gemini, mock_garmin, client, d
     assert resp.json()["synced_count"] == 1
     assert "Successfully pushed 1 structured running workouts" in resp.json()["message"]
     
-    # Assert calendar cleaning unscheduled the old workout on that date
-    mock_instance.unschedule_workout.assert_called_once_with(8888)
+    # Assert calendar cleaning unscheduled old AuraRun workouts
+    # (called multiple times as we sweep all months of the plan)
+    mock_instance.unschedule_workout.assert_called_with(8888)
