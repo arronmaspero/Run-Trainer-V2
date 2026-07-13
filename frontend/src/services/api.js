@@ -242,8 +242,8 @@ export const api = {
     return handleResponse(res, "Failed to disconnect Garmin Connect");
   },
 
-  async pushPlanToGarmin() {
-    const res = await fetch(`${API_BASE}/plans/push-garmin`, {
+  async pushPlanToGarmin(forceClear = false) {
+    const res = await fetch(`${API_BASE}/plans/push-garmin?force_clear=${forceClear}`, {
       method: "POST",
       cache: "no-store",
       headers: getHeaders()

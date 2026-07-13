@@ -185,14 +185,17 @@ export const CurrentPlanPage = {
     }
 
     if (this.state.isSyncingGarmin) {
+      const isForce = this.state.forceClearMode;
       return `
         <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px); z-index: 9999; display: flex; align-items: center; justify-content: center; color: white;" class="fade-in">
-          <div style="max-width: 500px; padding: 3rem; text-align: center; background: #1e293b; border-radius: var(--radius-lg); border: 1px solid var(--border-color); box-shadow: var(--shadow-2xl);">
-            <div style="width: 70px; height: 70px; border: 4px solid var(--border-color); border-top: 4px solid #007cc2; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 2rem;"></div>
-            <h2 style="font-family: var(--font-display); font-size: 1.8rem; font-weight: 700; margin-bottom: 0.5rem;">Garmin Calendar Sync</h2>
-            <p style="color: #007cc2; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700; margin-bottom: 1.5rem;">Connecting to Garmin Connect</p>
+          <div style="max-width: 500px; padding: 3rem; text-align: center; background: #1e293b; border-radius: var(--radius-lg); border: 1px solid ${isForce ? 'rgba(244,63,94,0.4)' : 'var(--border-color)'}; box-shadow: var(--shadow-2xl);">
+            <div style="width: 70px; height: 70px; border: 4px solid var(--border-color); border-top: 4px solid ${isForce ? '#f43f5e' : '#007cc2'}; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 2rem;"></div>
+            <h2 style="font-family: var(--font-display); font-size: 1.8rem; font-weight: 700; margin-bottom: 0.5rem;">${isForce ? 'Force Clear &amp; Sync' : 'Garmin Calendar Sync'}</h2>
+            <p style="color: ${isForce ? '#f43f5e' : '#007cc2'}; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700; margin-bottom: 1.5rem;">${isForce ? 'Clearing all calendar workouts' : 'Connecting to Garmin Connect'}</p>
             <p style="color: var(--text-secondary); font-size: 1.1rem; line-height: 1.5; min-height: 50px;">
-              Generating structured watch workouts and scheduling them on your Garmin calendar...
+              ${isForce
+                ? 'Removing all scheduled workouts in your plan date range, then uploading a fresh set of structured workouts...'
+                : 'Generating structured watch workouts and scheduling them on your Garmin calendar...'}
             </p>
             <style>
               @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -358,7 +361,7 @@ export const CurrentPlanPage = {
             Update Plan
           </button>
 
-          <button id="btn-sync-garmin" onclick="window.CurrentPlanPage.handleSyncGarmin()" style="
+          <button id="btn-sync-garmin" onclick="window.CurrentPlanPage.handleSyncGarmin(false)" style="
             font-size: 1rem; padding: 0.8rem 1.75rem;
             display: inline-flex; align-items: center; gap: 0.6rem;
             background: rgba(0, 124, 194, 0.1);
@@ -370,6 +373,21 @@ export const CurrentPlanPage = {
           onmouseout="this.style.background='rgba(0, 124, 194, 0.1)'; this.style.borderColor='rgba(0, 124, 194, 0.4)'">
             <i data-lucide="arrow-up-right" style="color: #007cc2; width: 18px; height: 18px;"></i>
             Sync to Garmin
+          </button>
+
+          <button id="btn-sync-garmin-force" onclick="window.CurrentPlanPage.handleSyncGarmin(true)" style="
+            font-size: 1rem; padding: 0.8rem 1.75rem;
+            display: inline-flex; align-items: center; gap: 0.6rem;
+            background: rgba(244, 63, 94, 0.07);
+            border: 1px solid rgba(244, 63, 94, 0.35); border-radius: 12px;
+            color: var(--text-primary); cursor: pointer; font-weight: 600;
+            transition: all 0.2s ease; box-shadow: 0 2px 12px rgba(244, 63, 94, 0.08);
+          "
+          title="Removes ALL scheduled workouts in your plan date range and re-syncs. Use this once to clear old un-tagged workouts."
+          onmouseover="this.style.background='rgba(244, 63, 94, 0.15)'; this.style.borderColor='rgba(244, 63, 94, 0.6)'"
+          onmouseout="this.style.background='rgba(244, 63, 94, 0.07)'; this.style.borderColor='rgba(244, 63, 94, 0.35)'">
+            <i data-lucide="trash-2" style="color: var(--color-intervals); width: 18px; height: 18px;"></i>
+            Force Clear &amp; Sync
           </button>
         </div>
 
@@ -403,22 +421,34 @@ export const CurrentPlanPage = {
     }
   },
 
-  async handleSyncGarmin() {
+  async handleSyncGarmin(forceClear = false) {
     if (!this.state.profile || !this.state.profile.garmin_connected) {
       window.showToast("Please set up your Garmin Connect credentials in Profile Settings first.", "error");
       return;
     }
 
+    if (forceClear) {
+      const confirmed = confirm(
+        "⚠️ Force Clear & Sync\n\n" +
+        "This will remove ALL scheduled workouts from your Garmin calendar between today and your plan end date — including any non-AuraRun workouts.\n\n" +
+        "This is useful as a one-time clean-up if you have old un-tagged workouts from previous syncs.\n\n" +
+        "Are you sure you want to continue?"
+      );
+      if (!confirmed) return;
+    }
+
     this.state.isSyncingGarmin = true;
+    this.state.forceClearMode = forceClear;
     this.updateView();
 
     try {
-      const res = await api.pushPlanToGarmin();
+      const res = await api.pushPlanToGarmin(forceClear);
       window.showToast(res.message || "Workouts successfully synced to Garmin Connect!", "success");
     } catch (err) {
       window.showToast(err.message || "Failed to push workouts to Garmin Connect.", "error");
     } finally {
       this.state.isSyncingGarmin = false;
+      this.state.forceClearMode = false;
       this.updateView();
     }
   }

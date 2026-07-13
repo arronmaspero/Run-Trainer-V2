@@ -282,12 +282,13 @@ def apply_update(
 
 @router.post("/push-garmin")
 def sync_to_garmin(
+    force_clear: bool = False,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     from src.services.garmin_service import push_plan_to_garmin
     try:
-        res = push_plan_to_garmin(user_id=current_user.id, db=db)
+        res = push_plan_to_garmin(user_id=current_user.id, db=db, force_clear=force_clear)
         return res
     except Exception as e:
         import traceback

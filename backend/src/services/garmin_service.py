@@ -187,7 +187,7 @@ def _map_individual_step(step: Union[GeminiWorkoutStep, GeminiSubStep], step_ord
 # Plan Synchronization Service
 # -------------------------------------------------------------
 
-def push_plan_to_garmin(user_id: str, db: Session) -> Dict[str, Any]:
+def push_plan_to_garmin(user_id: str, db: Session, force_clear: bool = False) -> Dict[str, Any]:
     """Fetch user's upcoming active plan sessions, parse them with Gemini, and push to GarminConnect calendar."""
     # Retrieve credentials
     account = db.query(ConnectedAccount).filter(
@@ -300,7 +300,7 @@ def push_plan_to_garmin(user_id: str, db: Session) -> Dict[str, Any]:
     except Exception as login_err:
         raise Exception(f"Failed to log in to Garmin Connect. Please verify your credentials: {str(login_err)}")
         
-    # Clear existing scheduled workouts that belong to AuraRun from today until the end of the plan
+    # Clear existing scheduled workouts from the calendar within the plan date range
     today_str = today.isoformat()
     end_date_str = active_plan.end_date.isoformat() if active_plan.end_date else "2030-12-31"
     
@@ -328,21 +328,26 @@ def push_plan_to_garmin(user_id: str, db: Session) -> Dict[str, Any]:
                     schedule_id = item.get("workoutScheduleId")
                     
                     if cal_date and today_str <= cal_date <= end_date_str and schedule_id:
-                        desc = item.get("description") or ""
-                        workout_obj = item.get("workout") or {}
-                        w_desc = workout_obj.get("description") or ""
-                        w_name = workout_obj.get("workoutName") or ""
-                        w_name_root = item.get("workoutName") or ""
-                        
-                        is_aurarun = (
-                            "AuraRun" in desc or
-                            "AuraRun" in w_desc or
-                            "AuraRun" in w_name or
-                            "AuraRun" in w_name_root
-                        )
-                        
-                        if is_aurarun:
+                        if force_clear:
+                            # Nuclear option: remove ALL scheduled workouts in the date range
                             garmin_client.unschedule_workout(schedule_id)
+                        else:
+                            # Standard: only remove workouts stamped with AuraRun
+                            desc = item.get("description") or ""
+                            workout_obj = item.get("workout") or {}
+                            w_desc = workout_obj.get("description") or ""
+                            w_name = workout_obj.get("workoutName") or ""
+                            w_name_root = item.get("workoutName") or ""
+                            
+                            is_aurarun = (
+                                "AuraRun" in desc or
+                                "AuraRun" in w_desc or
+                                "AuraRun" in w_name or
+                                "AuraRun" in w_name_root
+                            )
+                            
+                            if is_aurarun:
+                                garmin_client.unschedule_workout(schedule_id)
         except Exception as fetch_err:
             import logging
             logging.getLogger(__name__).warning(f"Failed to clear existing calendar workouts for {y}-{m}: {fetch_err}")
