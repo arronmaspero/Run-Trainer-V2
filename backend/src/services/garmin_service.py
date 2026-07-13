@@ -301,7 +301,10 @@ def push_plan_to_garmin(user_id: str, db: Session, force_clear: bool = False) ->
         raise Exception(f"Failed to log in to Garmin Connect. Please verify your credentials: {str(login_err)}")
         
     # Clear existing scheduled workouts from the calendar within the plan date range
-    today_str = today.isoformat()
+    # Start from tomorrow so today's workout is never touched (it may not be done yet)
+    from datetime import timedelta
+    tomorrow = today + timedelta(days=1)
+    clear_from_str = tomorrow.isoformat()
     end_date_str = active_plan.end_date.isoformat() if active_plan.end_date else "2030-12-31"
     
     months_to_fetch = []
@@ -327,7 +330,7 @@ def push_plan_to_garmin(user_id: str, db: Session, force_clear: bool = False) ->
                     cal_date = item.get("calendarDate")
                     schedule_id = item.get("workoutScheduleId")
                     
-                    if cal_date and today_str <= cal_date <= end_date_str and schedule_id:
+                    if cal_date and clear_from_str <= cal_date <= end_date_str and schedule_id:
                         if force_clear:
                             # Nuclear option: remove ALL scheduled workouts in the date range
                             garmin_client.unschedule_workout(schedule_id)
