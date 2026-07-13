@@ -299,3 +299,20 @@ def sync_to_garmin(
         )
 
 
+@router.post("/clear-garmin")
+def clear_garmin(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Clear all scheduled workouts from Garmin calendar (tomorrow onwards through plan end). No sync."""
+    from src.services.garmin_service import clear_garmin_calendar
+    try:
+        res = clear_garmin_calendar(user_id=current_user.id, db=db)
+        return res
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )

@@ -375,7 +375,7 @@ export const CurrentPlanPage = {
             Sync to Garmin
           </button>
 
-          <button id="btn-sync-garmin-force" onclick="window.CurrentPlanPage.handleSyncGarmin(true)" style="
+          <button id="btn-clear-garmin" onclick="window.CurrentPlanPage.handleClearGarmin()" style="
             font-size: 1rem; padding: 0.8rem 1.75rem;
             display: inline-flex; align-items: center; gap: 0.6rem;
             background: rgba(244, 63, 94, 0.07);
@@ -383,11 +383,11 @@ export const CurrentPlanPage = {
             color: var(--text-primary); cursor: pointer; font-weight: 600;
             transition: all 0.2s ease; box-shadow: 0 2px 12px rgba(244, 63, 94, 0.08);
           "
-          title="Removes ALL scheduled workouts in your plan date range and re-syncs. Use this once to clear old un-tagged workouts."
+          title="Removes ALL scheduled workouts from your Garmin calendar from tomorrow through plan end date. Does not re-sync."
           onmouseover="this.style.background='rgba(244, 63, 94, 0.15)'; this.style.borderColor='rgba(244, 63, 94, 0.6)'"
           onmouseout="this.style.background='rgba(244, 63, 94, 0.07)'; this.style.borderColor='rgba(244, 63, 94, 0.35)'">
             <i data-lucide="trash-2" style="color: var(--color-intervals); width: 18px; height: 18px;"></i>
-            Force Clear &amp; Sync
+            Clear Garmin Calendar
           </button>
         </div>
 
@@ -427,25 +427,48 @@ export const CurrentPlanPage = {
       return;
     }
 
-    if (forceClear) {
-      const confirmed = confirm(
-        "⚠️ Force Clear & Sync\n\n" +
-        "This will remove ALL scheduled workouts from your Garmin calendar between today and your plan end date — including any non-AuraRun workouts.\n\n" +
-        "This is useful as a one-time clean-up if you have old un-tagged workouts from previous syncs.\n\n" +
-        "Are you sure you want to continue?"
-      );
-      if (!confirmed) return;
-    }
-
     this.state.isSyncingGarmin = true;
-    this.state.forceClearMode = forceClear;
+    this.state.forceClearMode = false;
     this.updateView();
 
     try {
-      const res = await api.pushPlanToGarmin(forceClear);
+      const res = await api.pushPlanToGarmin(false);
       window.showToast(res.message || "Workouts successfully synced to Garmin Connect!", "success");
     } catch (err) {
       window.showToast(err.message || "Failed to push workouts to Garmin Connect.", "error");
+    } finally {
+      this.state.isSyncingGarmin = false;
+      this.updateView();
+    }
+  },
+
+  async handleClearGarmin() {
+    if (!this.state.profile || !this.state.profile.garmin_connected) {
+      window.showToast("Please set up your Garmin Connect credentials in Profile Settings first.", "error");
+      return;
+    }
+
+    const confirmed = confirm(
+      "⚠️ Clear Garmin Calendar\n\n" +
+      "This will remove ALL scheduled workouts from your Garmin calendar from tomorrow through your plan end date.\n\n" +
+      "Your completed activity recordings will NOT be affected.\n\n" +
+      "Are you sure?"
+    );
+    if (!confirmed) return;
+
+    this.state.isSyncingGarmin = true;
+    this.state.forceClearMode = true;
+    this.updateView();
+
+    try {
+      const res = await api.clearGarminCalendar();
+      window.showToast(
+        `${res.message} (${res.removed_count} removed)`,
+        "success"
+      );
+      console.log("[ClearGarmin] Diagnostic response:", res);
+    } catch (err) {
+      window.showToast(err.message || "Failed to clear Garmin calendar.", "error");
     } finally {
       this.state.isSyncingGarmin = false;
       this.state.forceClearMode = false;

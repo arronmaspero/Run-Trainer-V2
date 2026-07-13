@@ -249,5 +249,14 @@ export const api = {
       headers: getHeaders()
     });
     return handleResponse(res, "Failed to push structured workouts to Garmin");
+  },
+
+  async clearGarminCalendar() {
+    const res = await fetch(`${API_BASE}/plans/clear-garmin`, {
+      method: "POST",
+      cache: "no-store",
+      headers: getHeaders()
+    });
+    return handleResponse(res, "Failed to clear Garmin calendar");
   }
 };

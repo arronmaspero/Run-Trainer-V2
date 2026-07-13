@@ -187,6 +187,101 @@ def _map_individual_step(step: Union[GeminiWorkoutStep, GeminiSubStep], step_ord
 # Plan Synchronization Service
 # -------------------------------------------------------------
 
+def clear_garmin_calendar(user_id: str, db: Session) -> Dict[str, Any]:
+    """Log in to Garmin Connect and remove all scheduled workouts from tomorrow through plan end date.
+    Returns a report of what was found and deleted (for debugging)."""
+    import logging
+    from datetime import timedelta
+    logger = logging.getLogger(__name__)
+
+    account = db.query(ConnectedAccount).filter(
+        ConnectedAccount.user_id == user_id,
+        ConnectedAccount.provider == "garmin"
+    ).first()
+    if not account:
+        raise Exception("Garmin account credentials are not configured. Please set them up in profile settings first.")
+
+    garmin_email = account.access_token
+    garmin_password = decrypt_password(account.refresh_token)
+
+    active_plan = db.query(TrainingPlan).filter(
+        TrainingPlan.user_id == user_id,
+        TrainingPlan.status == "active"
+    ).first()
+    if not active_plan:
+        raise Exception("No active training plan found.")
+
+    try:
+        garmin_client = Garmin(garmin_email, garmin_password)
+        garmin_client.login()
+    except Exception as login_err:
+        raise Exception(f"Failed to log in to Garmin Connect. Please verify your credentials: {str(login_err)}")
+
+    today = date.today()
+    tomorrow = today + timedelta(days=1)
+    clear_from_str = tomorrow.isoformat()
+    end_date_str = active_plan.end_date.isoformat() if active_plan.end_date else "2030-12-31"
+
+    months_to_fetch = []
+    curr_year = today.year
+    curr_month = today.month
+    end_year = active_plan.end_date.year if active_plan.end_date else today.year
+    end_month = active_plan.end_date.month if active_plan.end_date else today.month
+    limit = 0
+    while (curr_year, curr_month) <= (end_year, end_month) and limit < 12:
+        months_to_fetch.append((curr_year, curr_month))
+        curr_month += 1
+        if curr_month > 12:
+            curr_month = 1
+            curr_year += 1
+        limit += 1
+
+    removed = []
+    skipped = []
+    raw_sample = []  # capture first few items for diagnosis
+
+    for y, m in months_to_fetch:
+        try:
+            scheduled = garmin_client.get_scheduled_workouts(y, m)
+            logger.info(f"[ClearGarmin] {y}-{m:02d}: got {len(scheduled) if scheduled else 0} items")
+            if scheduled and isinstance(scheduled, list):
+                # Log the raw keys of the first item per month for diagnosis
+                if scheduled and len(raw_sample) < 3:
+                    raw_sample.append({"month": f"{y}-{m:02d}", "keys": list(scheduled[0].keys()), "sample": scheduled[0]})
+
+                for item in scheduled:
+                    cal_date = item.get("calendarDate") or item.get("date") or item.get("scheduledDate")
+                    # Try multiple possible ID field names
+                    schedule_id = (
+                        item.get("workoutScheduleId") or
+                        item.get("scheduleId") or
+                        item.get("id") or
+                        item.get("workoutId")
+                    )
+                    logger.info(f"[ClearGarmin] item date={cal_date} id={schedule_id} keys={list(item.keys())}")
+
+                    if cal_date and clear_from_str <= cal_date <= end_date_str and schedule_id:
+                        try:
+                            garmin_client.unschedule_workout(schedule_id)
+                            removed.append({"date": cal_date, "id": schedule_id})
+                            logger.info(f"[ClearGarmin] REMOVED schedule_id={schedule_id} on {cal_date}")
+                        except Exception as del_err:
+                            skipped.append({"date": cal_date, "id": schedule_id, "error": str(del_err)})
+                            logger.warning(f"[ClearGarmin] FAILED to remove {schedule_id}: {del_err}")
+                    else:
+                        logger.info(f"[ClearGarmin] SKIPPED: date={cal_date} in_range={cal_date is not None and clear_from_str <= cal_date <= end_date_str} id={schedule_id}")
+        except Exception as fetch_err:
+            logger.warning(f"[ClearGarmin] Failed to fetch {y}-{m}: {fetch_err}")
+
+    return {
+        "status": "success",
+        "message": f"Removed {len(removed)} scheduled workouts from Garmin calendar ({clear_from_str} to {end_date_str}).",
+        "removed_count": len(removed),
+        "removed": removed,
+        "skipped": skipped,
+        "raw_sample": raw_sample,
+    }
+
 def push_plan_to_garmin(user_id: str, db: Session, force_clear: bool = False) -> Dict[str, Any]:
     """Fetch user's upcoming active plan sessions, parse them with Gemini, and push to GarminConnect calendar."""
     # Retrieve credentials
