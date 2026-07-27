@@ -166,9 +166,9 @@ export const Calendar = {
                  ondragstart="CalendarDragDrop.handleDragStart(event)" 
                  ondragend="CalendarDragDrop.handleDragEnd(event)" 
                  onclick="window.location.hash='#session/${s.id}'">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+              ${statusBadge ? `<div style="margin-bottom: 0.2rem;">${statusBadge}</div>` : ""}
+              <div style="margin-bottom: 0.3rem;">
                 <span class="workout-tag ${typeClass}">${s.type}</span>
-                ${statusBadge}
               </div>
               <div style="font-weight: 700; font-size: 0.9rem; color: var(--text-primary); line-height: 1.2;">
                 ${s.name}
