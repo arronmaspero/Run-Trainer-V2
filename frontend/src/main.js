@@ -152,7 +152,7 @@ function navigateTo(hash) {
 
 // Router Logic
 async function router() {
-  const hash = window.location.hash || "#home";
+  const hash = window.location.hash || "#login";
   const container = document.getElementById("app-view");
   if (!container) return;
 
@@ -165,10 +165,36 @@ async function router() {
     btnUnit.textContent = window.getUnitPreference() === "miles" ? "Unit: mi" : "Unit: km";
   }
 
-  // Track user login state to update headers/profile
   const token = localStorage.getItem("session_token");
   const userName = localStorage.getItem("user_name");
-  
+
+  // If not logged in, always redirect to login — hide chrome and bail
+  const isAuthPage = hash === "#login" || hash === "#register";
+  if (!token && !isAuthPage) {
+    navigateTo("#login");
+    return;
+  }
+
+  // Show/hide header chrome depending on auth state
+  const header = document.querySelector("header");
+  const footer = document.querySelector("footer");
+  if (isAuthPage) {
+    if (header) header.style.display = "none";
+    if (footer) footer.style.display = "none";
+    container.style.minHeight = "100vh";
+    container.style.display = "flex";
+    container.style.alignItems = "center";
+    container.style.justifyContent = "center";
+  } else {
+    if (header) header.style.display = "";
+    if (footer) footer.style.display = "";
+    container.style.minHeight = "80vh";
+    container.style.display = "";
+    container.style.alignItems = "";
+    container.style.justifyContent = "";
+  }
+
+  // Update nav visibility for logged-in users
   const authButtons = document.getElementById("nav-auth-buttons");
   const userProfile = document.getElementById("nav-user-profile");
   const usernameSpan = document.getElementById("nav-username");
@@ -183,7 +209,7 @@ async function router() {
     if (navHome) navHome.style.display = "block";
     if (btnUnit) btnUnit.style.display = "block";
   } else {
-    if (authButtons) authButtons.style.display = "block";
+    if (authButtons) authButtons.style.display = "none";
     if (userProfile) userProfile.style.display = "none";
     if (navCurrentPlan) navCurrentPlan.style.display = "none";
     if (navHome) navHome.style.display = "none";
@@ -257,7 +283,7 @@ if (btnLogout) {
   btnLogout.onclick = () => {
     api.logout();
     window.showToast("Signed out successfully");
-    navigateTo("#home");
+    navigateTo("#login");
     router();
   };
 }
