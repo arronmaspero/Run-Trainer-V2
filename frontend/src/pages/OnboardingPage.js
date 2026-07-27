@@ -49,6 +49,10 @@ export const OnboardingPage = {
             <div style="width: 28px; height: 28px; border-radius: 50%; background: ${this.state.step >= 2 ? 'var(--gradient-premium)' : 'var(--border-color)'}; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.85rem;">2</div>
             <span style="font-family: var(--font-display); font-weight: 600;">Race Goals</span>
           </div>
+          <div style="display: flex; align-items: center; gap: 0.5rem; opacity: ${this.state.step === 3 ? '1' : '0.5'}">
+            <div style="width: 28px; height: 28px; border-radius: 50%; background: ${this.state.step >= 3 ? 'var(--gradient-premium)' : 'var(--border-color)'}; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.85rem;">3</div>
+            <span style="font-family: var(--font-display); font-weight: 600;">Connect Apps</span>
+          </div>
         </div>
 
         <!-- Wizard Steps Content -->
@@ -86,8 +90,13 @@ export const OnboardingPage = {
             <div style="display: flex; flex-direction: column; gap: 0.5rem;">
               <label style="font-size: 0.9rem; color: var(--text-secondary); font-weight: 500;">Preferred Long Run Day</label>
               <select id="long-day" style="padding: 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: #1e293b; color: white; font-size: 1rem;">
-                <option value="Saturday" ${this.state.long_run_day === "Saturday" ? "selected" : ""}>Saturday</option>
-                <option value="Sunday" ${this.state.long_run_day === "Sunday" ? "selected" : ""}>Sunday</option>
+                <option value="Monday"    ${this.state.long_run_day === "Monday"    ? "selected" : ""}>Monday</option>
+                <option value="Tuesday"   ${this.state.long_run_day === "Tuesday"   ? "selected" : ""}>Tuesday</option>
+                <option value="Wednesday" ${this.state.long_run_day === "Wednesday" ? "selected" : ""}>Wednesday</option>
+                <option value="Thursday"  ${this.state.long_run_day === "Thursday"  ? "selected" : ""}>Thursday</option>
+                <option value="Friday"    ${this.state.long_run_day === "Friday"    ? "selected" : ""}>Friday</option>
+                <option value="Saturday"  ${this.state.long_run_day === "Saturday"  ? "selected" : ""}>Saturday</option>
+                <option value="Sunday"    ${this.state.long_run_day === "Sunday"    ? "selected" : ""}>Sunday</option>
               </select>
             </div>
             <div style="display: flex; flex-direction: column; gap: 0.5rem;">
@@ -159,23 +168,120 @@ export const OnboardingPage = {
 
           <div style="display: flex; justify-content: space-between; margin-top: 1.5rem;">
             <button id="btn-back" class="btn btn-secondary"><i data-lucide="arrow-left"></i> Back</button>
-            <button id="btn-generate" class="btn btn-primary">Generate Training Plan <i data-lucide="check"></i></button>
+            <button id="btn-next-2" class="btn btn-primary">Next Step <i data-lucide="arrow-right"></i></button>
           </div>
+        </div>
+      `;
+    }
+
+    if (this.state.step === 3) {
+      return `
+        <h3 style="font-family: var(--font-display); font-size: 1.75rem; margin-bottom: 0.5rem;">Connect Your Apps</h3>
+        <p style="color: var(--text-secondary); margin-bottom: 2rem;">Link Strava to import your activity history and Garmin to push structured workouts to your watch. You can also do this later from your profile.</p>
+
+        <!-- Strava Section -->
+        <div style="border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.5rem; margin-bottom: 1.5rem; background: rgba(255,255,255,0.02);">
+          <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
+            <div style="width: 36px; height: 36px; background: hsl(15,100%,45%); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+              <i data-lucide="activity" style="width: 18px; height: 18px; color: white;"></i>
+            </div>
+            <div>
+              <div style="font-weight: 700; font-size: 1rem;">Strava</div>
+              <div style="font-size: 0.8rem; color: var(--text-muted);">Import runs and activity history</div>
+            </div>
+          </div>
+
+          <div style="background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.2); border-radius: var(--radius-sm); padding: 0.85rem 1rem; margin-bottom: 1rem; font-size: 0.85rem; color: var(--text-secondary); line-height: 1.6;">
+            <strong style="color: var(--accent-secondary);">How to get your Strava API credentials:</strong><br>
+            1. Go to <a href="https://www.strava.com/settings/api" target="_blank" rel="noopener" style="color: var(--accent-secondary); font-weight: 600;">strava.com/settings/api</a> and create an app.<br>
+            2. Set <strong>Authorization Callback Domain</strong> to <code style="background: rgba(255,255,255,0.08); padding: 0.1rem 0.3rem; border-radius: 3px;">127.0.0.1</code><br>
+            3. Copy your <strong>Client ID</strong> and <strong>Client Secret</strong> below.
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 1rem;">
+            <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+              <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);">Strava Client ID</label>
+              <input type="text" id="ob-strava-id" placeholder="e.g. 123456"
+                style="padding: 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: rgba(15,23,42,0.4); color: white; font-size: 1rem; outline: none;">
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+              <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);">Strava Client Secret</label>
+              <input type="password" id="ob-strava-secret" placeholder="••••••••"
+                style="padding: 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: rgba(15,23,42,0.4); color: white; font-size: 1rem; outline: none;">
+            </div>
+            <button id="btn-save-strava" class="btn" style="background: hsl(15,100%,45%); color: white; justify-content: center; display: flex; align-items: center; gap: 0.5rem;">
+              <i data-lucide="navigation" style="width: 16px; height: 16px;"></i> Save &amp; Connect Strava
+            </button>
+          </div>
+        </div>
+
+        <!-- Garmin Section -->
+        <div style="border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.5rem; background: rgba(255,255,255,0.02);">
+          <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
+            <div style="width: 36px; height: 36px; background: #007cc2; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+              <i data-lucide="watch" style="width: 18px; height: 18px; color: white;"></i>
+            </div>
+            <div>
+              <div style="font-weight: 700; font-size: 1rem;">Garmin Connect</div>
+              <div style="font-size: 0.8rem; color: var(--text-muted);">Push structured workouts to your watch</div>
+            </div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 1rem;">
+            <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+              <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);">Garmin Email</label>
+              <input type="email" id="ob-garmin-email" placeholder="e.g. runner@garmin.com"
+                style="padding: 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: rgba(15,23,42,0.4); color: white; font-size: 1rem; outline: none;">
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+              <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);">Garmin Password</label>
+              <input type="password" id="ob-garmin-password" placeholder="••••••••"
+                style="padding: 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: rgba(15,23,42,0.4); color: white; font-size: 1rem; outline: none;">
+            </div>
+            <button id="btn-save-garmin" class="btn" style="background: #007cc2; color: white; justify-content: center; display: flex; align-items: center; gap: 0.5rem;">
+              <i data-lucide="link" style="width: 16px; height: 16px;"></i> Save &amp; Connect Garmin
+            </button>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; margin-top: 1.5rem;">
+          <button id="btn-back" class="btn btn-secondary"><i data-lucide="arrow-left"></i> Back</button>
+          <button id="btn-generate" class="btn btn-primary">Generate Training Plan <i data-lucide="check"></i></button>
         </div>
       `;
     }
   },
 
-  handleNext() {
-    if (this.state.step === 1) {
+  handleNext(fromStep) {
+    if (fromStep === 1) {
       const volInput = parseFloat(document.getElementById("volume").value) || 20;
       const pref = window.getUnitPreference();
       this.state.weekly_volume_miles = pref === "km" ? volInput * 0.621371 : volInput;
       this.state.runs_per_week = parseInt(document.getElementById("runs-count").value) || 3;
       this.state.long_run_day = document.getElementById("long-day").value;
       this.state.unavailable_days = document.getElementById("unavailable").value;
-      
       this.state.step = 2;
+      this.updateView();
+    } else if (fromStep === 2) {
+      // Save race goals state then proceed to integrations step
+      this.state.race_name = document.getElementById("race-name").value;
+      this.state.race_date = document.getElementById("race-date").value;
+      const distSelect = document.getElementById("distance").value;
+      if (distSelect === "custom") {
+        const val = parseFloat(document.getElementById("custom-distance-val").value);
+        const unit = document.getElementById("custom-distance-unit").value;
+        if (!isNaN(val) && val > 0) this.state.race_distance = `${val} ${unit}`;
+      } else {
+        this.state.race_distance = distSelect;
+      }
+      this.state.target_time = document.getElementById("target-time").value;
+      const notesEl = document.getElementById("additional-notes");
+      if (notesEl) this.state.additional_notes = notesEl.value;
+      if (!this.state.race_date) {
+        window.showToast("Race date is required", "error");
+        return;
+      }
+      this.state.step = 3;
       this.updateView();
     }
   },
@@ -314,25 +420,76 @@ export const OnboardingPage = {
   },
 
   bindEvents(navigateTo) {
-    const btnNext = document.getElementById("btn-next");
-    const btnBack = document.getElementById("btn-back");
+    const btnNext   = document.getElementById("btn-next");
+    const btnNext2  = document.getElementById("btn-next-2");
+    const btnBack   = document.getElementById("btn-back");
     const btnGenerate = document.getElementById("btn-generate");
     const distanceSelect = document.getElementById("distance");
 
-    if (btnNext) {
-      btnNext.onclick = () => this.handleNext();
-    }
-    if (btnBack) {
-      btnBack.onclick = () => this.handleBack();
-    }
-    if (btnGenerate) {
-      btnGenerate.onclick = () => this.handleGeneratePlan(navigateTo);
-    }
+    if (btnNext)  btnNext.onclick  = () => this.handleNext(1);
+    if (btnNext2) btnNext2.onclick = () => this.handleNext(2);
+    if (btnBack)  btnBack.onclick  = () => this.handleBack();
+    if (btnGenerate) btnGenerate.onclick = () => this.handleGeneratePlan(navigateTo);
+
     if (distanceSelect) {
       distanceSelect.onchange = () => {
         const customContainer = document.getElementById("custom-distance-container");
         if (customContainer) {
           customContainer.style.display = distanceSelect.value === "custom" ? "grid" : "none";
+        }
+      };
+    }
+
+    // Step 3 — Strava save
+    const btnSaveStrava = document.getElementById("btn-save-strava");
+    if (btnSaveStrava) {
+      btnSaveStrava.onclick = async (e) => {
+        e.preventDefault();
+        const clientId     = document.getElementById("ob-strava-id").value.trim();
+        const clientSecret = document.getElementById("ob-strava-secret").value.trim();
+        if (!clientId || !clientSecret) {
+          window.showToast("Please enter both Client ID and Client Secret", "error");
+          return;
+        }
+        const orig = btnSaveStrava.innerHTML;
+        btnSaveStrava.disabled = true;
+        btnSaveStrava.textContent = "Saving…";
+        try {
+          await api.updateProfile({ strava_client_id: clientId, strava_client_secret: clientSecret });
+          const { url } = await api.getStravaConnectUrl();
+          window.showToast("Strava credentials saved — redirecting to authorise…");
+          setTimeout(() => { window.location.href = url; }, 1200);
+        } catch (err) {
+          window.showToast(err.message || "Failed to save Strava credentials", "error");
+          btnSaveStrava.disabled = false;
+          btnSaveStrava.innerHTML = orig;
+        }
+      };
+    }
+
+    // Step 3 — Garmin save
+    const btnSaveGarmin = document.getElementById("btn-save-garmin");
+    if (btnSaveGarmin) {
+      btnSaveGarmin.onclick = async (e) => {
+        e.preventDefault();
+        const email    = document.getElementById("ob-garmin-email").value.trim();
+        const password = document.getElementById("ob-garmin-password").value;
+        if (!email || !password) {
+          window.showToast("Please enter both Garmin email and password", "error");
+          return;
+        }
+        const orig = btnSaveGarmin.innerHTML;
+        btnSaveGarmin.disabled = true;
+        btnSaveGarmin.textContent = "Connecting…";
+        try {
+          await api.connectGarmin(email, password);
+          btnSaveGarmin.textContent = "✓ Garmin Connected";
+          btnSaveGarmin.style.background = "var(--color-easy)";
+          window.showToast("Garmin Connect linked successfully!", "success");
+        } catch (err) {
+          window.showToast(err.message || "Failed to connect Garmin", "error");
+          btnSaveGarmin.disabled = false;
+          btnSaveGarmin.innerHTML = orig;
         }
       };
     }
