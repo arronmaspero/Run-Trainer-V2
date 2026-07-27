@@ -269,3 +269,68 @@ def test_sync_to_garmin_endpoint_success(mock_get_gemini, mock_garmin, client, d
     # Assert calendar cleaning unscheduled old AuraRun workouts
     # (called multiple times as we sweep all months of the plan)
     mock_instance.unschedule_workout.assert_called_with(8888)
+
+@patch("src.services.garmin_service.Garmin")
+def test_clear_garmin_calendar_dict_response(mock_garmin, client, db):
+    # Mock Garmin client
+    mock_instance = MagicMock()
+    # Mock get_scheduled_workouts returning a dictionary containing calendarItems
+    mock_instance.get_scheduled_workouts.return_value = {
+        "calendarItems": [
+            {
+                "date": (date.today() + timedelta(days=1)).isoformat(),
+                "id": 12345,
+                "itemType": "workout",
+                "title": "EasyRun"
+            }
+        ]
+    }
+    mock_instance.unschedule_workout.return_value = {}
+    mock_garmin.return_value = mock_instance
+
+    # Register and login user
+    client.post(
+        "/api/v1/auth/register",
+        json={"name": "George", "email": "george@example.com", "password": "SecurePassword123!"}
+    )
+    login_resp = client.post(
+        "/api/v1/auth/login",
+        json={"email": "george@example.com", "password": "SecurePassword123!"}
+    )
+    token = login_resp.json()["session_token"]
+    user_id = login_resp.json()["user"]["id"]
+
+    # Save Garmin Credentials in DB
+    account = ConnectedAccount(
+        user_id=user_id,
+        provider="garmin",
+        access_token="george@example.com",
+        refresh_token=encrypt_password("Garmin123"),
+        expires_at=datetime.utcnow() + timedelta(days=365)
+    )
+    db.add(account)
+
+    # Add active plan
+    plan = TrainingPlan(
+        id="plan-george",
+        user_id=user_id,
+        race_name="Local 5K",
+        race_distance_miles=3.1,
+        start_date=date.today(),
+        end_date=date.today() + timedelta(weeks=4),
+        status="active"
+    )
+    db.add(plan)
+    db.commit()
+
+    # Clear Garmin calendar
+    resp = client.post(
+        "/api/v1/plans/clear-garmin",
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    assert resp.status_code == 200
+    res_data = resp.json()
+    assert res_data["status"] == "success"
+    assert res_data["removed_count"] >= 1
+    assert res_data["removed"][0]["id"] == 12345
+    mock_instance.unschedule_workout.assert_called_with(12345)

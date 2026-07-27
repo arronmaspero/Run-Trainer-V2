@@ -52,6 +52,58 @@ def test_garmin_login(email: str, password: str) -> bool:
         raise Exception(f"Garmin Connection Error: {str(e)}")
 
 # -------------------------------------------------------------
+# Garmin Session Helper — caches tokens to avoid rate limiting
+# -------------------------------------------------------------
+
+def get_garmin_client(account: "ConnectedAccount", db: Session) -> "Garmin":
+    """Return an authenticated Garmin client.
+    
+    Strategy:
+    1. If cached garth session tokens exist in DB, try to resume the session.
+    2. If resume fails (expired/invalid), fall back to fresh email+password login.
+    3. After any successful fresh login, persist the new tokens to DB.
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+
+    garmin_email = account.access_token
+    garmin_password = decrypt_password(account.refresh_token)
+
+    # --- Attempt 1: resume from cached tokens ---
+    if account.garth_tokens:
+        try:
+            client = Garmin(garmin_email, garmin_password)
+            client.client.loads(account.garth_tokens)
+            client._load_profile_and_settings()
+            logger.info("[GarminClient] Resumed session from cached tokens — no login needed.")
+            return client
+        except Exception as resume_err:
+            logger.warning(f"[GarminClient] Cached session expired or invalid ({resume_err}), falling back to fresh login.")
+
+    # --- Attempt 2: fresh login ---
+    try:
+        client = Garmin(garmin_email, garmin_password)
+        client.login()
+        logger.info("[GarminClient] Fresh login succeeded.")
+    except Exception as login_err:
+        raise Exception(f"Failed to log in to Garmin Connect. Please verify your credentials: {str(login_err)}")
+
+    # Persist the new tokens so the next request can skip login
+    try:
+        tokens_val = client.client.dumps()
+        if isinstance(tokens_val, str):
+            account.garth_tokens = tokens_val
+            db.commit()
+            logger.info("[GarminClient] Garth session tokens saved to database.")
+        else:
+            logger.info("[GarminClient] Client dumps did not return a string (mocked in tests?); skipping database save.")
+    except Exception as save_err:
+        logger.warning(f"[GarminClient] Could not save garth tokens: {save_err}")
+
+    return client
+
+
+# -------------------------------------------------------------
 # Gemini Structured Workout Parser Schema
 # -------------------------------------------------------------
 
@@ -144,7 +196,7 @@ def _map_individual_step(step: Union[GeminiWorkoutStep, GeminiSubStep], step_ord
     # Map target type
     tt_map = {
         "no_target": (TargetType.NO_TARGET, "no.target", 1),
-        "pace": (TargetType.SPEED_ZONE, "speed.zone", 5), # Absolute pace/speed targets
+        "pace": (TargetType.PACE_ZONE, "pace.zone", 6), # Absolute pace targets
         "heart_rate": (TargetType.HEART_RATE_ZONE, "heart.rate.zone", 4)
     }
     tt_id, tt_key, tt_order = tt_map.get(step.target_type.lower(), (TargetType.NO_TARGET, "no.target", 1))
@@ -172,14 +224,16 @@ def _map_individual_step(step: Union[GeminiWorkoutStep, GeminiSubStep], step_ord
     )
     
     # Add target ranges if configured
+    # Garmin's PACE_ZONE (targetType 6) uses m/s for targetValueOne/Two
     if step.target_type.lower() == "pace" and step.target_value_high > 0:
-        # Set absolute speed targets in meters per second
-        exec_step.targetValueLow = step.target_value_low   # Slower velocity
-        exec_step.targetValueHigh = step.target_value_high # Faster velocity
+        # targetValueOne = slower speed (slower pace boundary) in m/s
+        # targetValueTwo = faster speed (faster pace boundary) in m/s
+        exec_step.targetValueOne = round(step.target_value_low, 4)   # Slower velocity in m/s
+        exec_step.targetValueTwo = round(step.target_value_high, 4)  # Faster velocity in m/s
     elif step.target_type.lower() == "heart_rate" and step.target_value_high > 0:
         # Set heart rate targets in BPM
-        exec_step.targetValueLow = step.target_value_low
-        exec_step.targetValueHigh = step.target_value_high
+        exec_step.targetValueOne = step.target_value_low
+        exec_step.targetValueTwo = step.target_value_high
         
     return exec_step
 
@@ -212,8 +266,7 @@ def clear_garmin_calendar(user_id: str, db: Session) -> Dict[str, Any]:
         raise Exception("No active training plan found.")
 
     try:
-        garmin_client = Garmin(garmin_email, garmin_password)
-        garmin_client.login()
+        garmin_client = get_garmin_client(account, db)
     except Exception as login_err:
         raise Exception(f"Failed to log in to Garmin Connect. Please verify your credentials: {str(login_err)}")
 
@@ -243,13 +296,21 @@ def clear_garmin_calendar(user_id: str, db: Session) -> Dict[str, Any]:
     for y, m in months_to_fetch:
         try:
             scheduled = garmin_client.get_scheduled_workouts(y, m)
-            logger.info(f"[ClearGarmin] {y}-{m:02d}: got {len(scheduled) if scheduled else 0} items")
-            if scheduled and isinstance(scheduled, list):
+            
+            if isinstance(scheduled, dict):
+                scheduled_items = scheduled.get("calendarItems", [])
+            elif isinstance(scheduled, list):
+                scheduled_items = scheduled
+            else:
+                scheduled_items = []
+                
+            logger.info(f"[ClearGarmin] {y}-{m:02d}: got {len(scheduled_items)} items")
+            if scheduled_items:
                 # Log the raw keys of the first item per month for diagnosis
-                if scheduled and len(raw_sample) < 3:
-                    raw_sample.append({"month": f"{y}-{m:02d}", "keys": list(scheduled[0].keys()), "sample": scheduled[0]})
+                if len(raw_sample) < 3:
+                    raw_sample.append({"month": f"{y}-{m:02d}", "keys": list(scheduled_items[0].keys()), "sample": scheduled_items[0]})
 
-                for item in scheduled:
+                for item in scheduled_items:
                     cal_date = item.get("calendarDate") or item.get("date") or item.get("scheduledDate")
                     # Try multiple possible ID field names
                     schedule_id = (
@@ -305,6 +366,16 @@ def push_plan_to_garmin(user_id: str, db: Session, force_clear: bool = False) ->
     if not active_plan:
         raise Exception("No active training plan found. Please generate a training plan first.")
         
+    # Find the easy pace range from the plan sessions
+    easy_pace_range = "9:00-10:00"  # default fallback
+    all_sessions = db.query(TrainingSession).filter(
+        TrainingSession.plan_id == active_plan.id
+    ).all()
+    for s in all_sessions:
+        if s.type.lower() == "easy" and s.target_pace_range and s.target_pace_range != "N/A":
+            easy_pace_range = s.target_pace_range
+            break
+
     today = date.today()
     future_sessions = db.query(TrainingSession).filter(
         TrainingSession.plan_id == active_plan.id,
@@ -370,8 +441,11 @@ def push_plan_to_garmin(user_id: str, db: Session, force_clear: bool = False) ->
         "   - Warmup and cooldown steps can be distance-based if a distance is specified (e.g. 'Warm up 1.0 mile' -> distance=1.0), or lap_button if not specified.\n"
         "5. Calculate target values for speed (meters per second) if the target_type is 'pace':\n"
         "   - Formula: speed (m/s) = 1609.34 / (pace in seconds per mile).\n"
-        "   - Slower pace velocity goes to target_value_low. Faster pace velocity goes to target_value_high.\n"
-        "6. Ensure the estimatedDurationInSecs is the sum of all steps' durations (for lap_button steps, assume a reasonable estimate like 600 seconds for warmups/cooldowns).\n"
+        "   - Slower pace velocity (slower speed) goes to target_value_low. Faster pace velocity (faster speed) goes to target_value_high.\n"
+        "   - Example: 8:00 min/mile pace is 480 seconds per mile -> speed = 1609.34 / 480 = 3.35 m/s.\n"
+        f"6. Crucially, set target_type to 'pace' for all running and interval steps, and calculate the speed using the session's 'target_pace_range' (e.g., if the session has 'target_pace_range': '8:00-8:30', calculate speed in m/s for both values).\n"
+        f"7. Set target_type to 'pace' for all warmup, cooldown, and recovery running steps, and calculate the speed using the athlete's Easy Pace Range: '{easy_pace_range}'.\n"
+        "8. Ensure the estimatedDurationInSecs is the sum of all steps' durations (for lap_button steps, assume a reasonable estimate like 600 seconds for warmups/cooldowns).\n"
     )
     
     try:
@@ -385,13 +459,16 @@ def push_plan_to_garmin(user_id: str, db: Session, force_clear: bool = False) ->
             )
         )
         parsed_response = GeminiGarminWorkoutResponse.model_validate_json(response.text)
+        # Log the raw response to diagnose pace target issues
+        import logging as _logging
+        _log = _logging.getLogger(__name__)
+        _log.info(f"[GarminSync] Raw Gemini response: {response.text[:3000]}")
     except Exception as gemini_err:
         raise Exception(f"Failed to generate structured watch workouts using AI: {str(gemini_err)}")
         
     # Connect to Garmin
     try:
-        garmin_client = Garmin(garmin_email, garmin_password)
-        garmin_client.login()
+        garmin_client = get_garmin_client(account, db)
     except Exception as login_err:
         raise Exception(f"Failed to log in to Garmin Connect. Please verify your credentials: {str(login_err)}")
         
@@ -417,20 +494,57 @@ def push_plan_to_garmin(user_id: str, db: Session, force_clear: bool = False) ->
             curr_year += 1
         limit += 1
         
+    # Collect all workout names generated in this batch (both raw and prefixed)
+    aurarun_names = set()
+    for w in parsed_response.workouts:
+        name = w.workoutName
+        aurarun_names.add(name.lower())
+        if not name.lower().startswith("aura"):
+            aurarun_names.add(f"aura{name}".lower()[:15])
+            
+    known_aurarun_names = {
+        "activerecovery", "actrecoveasy", "aerobicmaint", "endurance8k", 
+        "midweekeasy", "aerobicintintro", "aerintintro", "speedplay", 
+        "pacingfeel", "pacefeelrun", "pacingfeelrun", "build9k", 
+        "builddist9k", "builddist93k", "steadymidweek", "fartlekplay", 
+        "earlytempo", "tempointro", "postfartlekrec", "posttemporec", 
+        "endurance10k", "endur10k", "endmilestone", "endurance103k", 
+        "aerobicbuild", "aerfoundbuild", "aerofoundbuild", "susttempointro", 
+        "sustainedtempo", "weekendwarmup", "endurance11k", "endurstepup11k", 
+        "endstepup112k", "stepup112k", "recweekopener", "speedsharpener", 
+        "gentlespeed"
+    }
+    
     for y, m in months_to_fetch:
         try:
             scheduled = garmin_client.get_scheduled_workouts(y, m)
-            if scheduled and isinstance(scheduled, list):
-                for item in scheduled:
-                    cal_date = item.get("calendarDate")
-                    schedule_id = item.get("workoutScheduleId")
+            
+            if isinstance(scheduled, dict):
+                scheduled_items = scheduled.get("calendarItems", [])
+            elif isinstance(scheduled, list):
+                scheduled_items = scheduled
+            else:
+                scheduled_items = []
+                
+            if scheduled_items:
+                for item in scheduled_items:
+                    cal_date = item.get("calendarDate") or item.get("date") or item.get("scheduledDate")
+                    schedule_id = (
+                        item.get("workoutScheduleId") or
+                        item.get("scheduleId") or
+                        item.get("id") or
+                        item.get("workoutId")
+                    )
                     
                     if cal_date and clear_from_str <= cal_date <= end_date_str and schedule_id:
                         if force_clear:
                             # Nuclear option: remove ALL scheduled workouts in the date range
                             garmin_client.unschedule_workout(schedule_id)
                         else:
-                            # Standard: only remove workouts stamped with AuraRun
+                            # Standard: only remove workouts matching our plan names
+                            title = item.get("title") or item.get("workoutName") or ""
+                            title_lower = title.strip().lower()
+                            
                             desc = item.get("description") or ""
                             workout_obj = item.get("workout") or {}
                             w_desc = workout_obj.get("description") or ""
@@ -438,10 +552,13 @@ def push_plan_to_garmin(user_id: str, db: Session, force_clear: bool = False) ->
                             w_name_root = item.get("workoutName") or ""
                             
                             is_aurarun = (
-                                "AuraRun" in desc or
-                                "AuraRun" in w_desc or
-                                "AuraRun" in w_name or
-                                "AuraRun" in w_name_root
+                                title_lower.startswith("aura") or
+                                title_lower in aurarun_names or
+                                title_lower in known_aurarun_names or
+                                "aurarun" in desc.lower() or
+                                "aurarun" in w_desc.lower() or
+                                "aurarun" in w_name.lower() or
+                                "aurarun" in w_name_root.lower()
                             )
                             
                             if is_aurarun:
@@ -470,20 +587,23 @@ def push_plan_to_garmin(user_id: str, db: Session, force_clear: bool = False) ->
             workoutSteps=workout_steps
         )
         
+        # Build Garmin running workout name (letters/numbers only, max 15 chars, prefixed with Aura)
+        w_name = workout.workoutName
+        if not w_name.lower().startswith("aura"):
+            w_name = f"Aura{w_name}"
+        w_name = w_name[:15]
+
         # Build Garmin running workout model
         running_workout = RunningWorkout(
-            workoutName=workout.workoutName,
+            workoutName=w_name,
             description=f"AuraRun: {workout.description}",
             estimatedDurationInSecs=workout.estimatedDurationInSecs,
             workoutSegments=[segment]
         )
         
-        # Convert to dictionary/JSON
-        workout_json = running_workout.model_dump()
-        
         try:
-            # Upload workout
-            res = garmin_client.upload_workout(workout_json)
+            # Upload workout using the official typed method to exclude None values
+            res = garmin_client.upload_running_workout(running_workout)
             workout_id = res["workoutId"]
             
             # Schedule workout on calendar

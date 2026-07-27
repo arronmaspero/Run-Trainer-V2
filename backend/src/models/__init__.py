@@ -32,6 +32,11 @@ def _run_column_migrations():
         if "name" not in cols:
             conn.execute(text("ALTER TABLE activities ADD COLUMN name VARCHAR(255)"))
             conn.commit()
+        # connected_accounts.garth_tokens — added to cache Garmin session tokens
+        ca_cols = [c["name"] for c in inspector.get_columns("connected_accounts")]
+        if "garth_tokens" not in ca_cols:
+            conn.execute(text("ALTER TABLE connected_accounts ADD COLUMN garth_tokens TEXT"))
+            conn.commit()
 
 _run_column_migrations()
 
