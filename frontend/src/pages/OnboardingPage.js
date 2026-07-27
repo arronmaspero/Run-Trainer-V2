@@ -47,11 +47,11 @@ export const OnboardingPage = {
           </div>
           <div style="display: flex; align-items: center; gap: 0.5rem; opacity: ${this.state.step === 2 ? '1' : '0.5'}">
             <div style="width: 28px; height: 28px; border-radius: 50%; background: ${this.state.step >= 2 ? 'var(--gradient-premium)' : 'var(--border-color)'}; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.85rem;">2</div>
-            <span style="font-family: var(--font-display); font-weight: 600;">Race Goals</span>
+            <span style="font-family: var(--font-display); font-weight: 600;">Connect Apps</span>
           </div>
           <div style="display: flex; align-items: center; gap: 0.5rem; opacity: ${this.state.step === 3 ? '1' : '0.5'}">
             <div style="width: 28px; height: 28px; border-radius: 50%; background: ${this.state.step >= 3 ? 'var(--gradient-premium)' : 'var(--border-color)'}; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.85rem;">3</div>
-            <span style="font-family: var(--font-display); font-weight: 600;">Connect Apps</span>
+            <span style="font-family: var(--font-display); font-weight: 600;">Race Goals</span>
           </div>
         </div>
 
@@ -114,70 +114,8 @@ export const OnboardingPage = {
 
     if (this.state.step === 2) {
       return `
-        <h3 style="font-family: var(--font-display); font-size: 1.75rem; margin-bottom: 0.5rem;">Race Goals</h3>
-        <p style="color: var(--text-secondary); margin-bottom: 2rem;">Gemini will search course details to tailor hill climbs, paces, and taper schedules.</p>
-        
-        <div style="display: flex; flex-direction: column; gap: 1.5rem;">
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
-            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-              <label style="font-size: 0.9rem; color: var(--text-secondary); font-weight: 500;">Race Name (Optional)</label>
-              <input type="text" id="race-name" value="${this.state.race_name}" placeholder="e.g., Boston Marathon" style="padding: 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: rgba(15, 23, 42, 0.4); color: white; font-size: 1rem;">
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-              <label style="font-size: 0.9rem; color: var(--text-secondary); font-weight: 500;">Race Date</label>
-              <input type="date" id="race-date" value="${this.state.race_date}" required style="padding: 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: rgba(15, 23, 42, 0.4); color: white; font-size: 1rem;">
-            </div>
-          </div>
-
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
-            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-              <label style="font-size: 0.9rem; color: var(--text-secondary); font-weight: 500;">Race Distance</label>
-              <select id="distance" style="padding: 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: #1e293b; color: white; font-size: 1rem;">
-                <option value="5k" ${this.state.race_distance === "5k" ? "selected" : ""}>5K</option>
-                <option value="10k" ${this.state.race_distance === "10k" ? "selected" : ""}>10K</option>
-                <option value="half marathon" ${this.state.race_distance === "half marathon" ? "selected" : ""}>Half Marathon</option>
-                <option value="marathon" ${this.state.race_distance === "marathon" ? "selected" : ""}>Marathon</option>
-                <option value="custom" ${this.state.race_distance === "custom" || (!["5k", "10k", "half marathon", "marathon"].includes(this.state.race_distance) && this.state.race_distance) ? "selected" : ""}>Custom Distance...</option>
-              </select>
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-              <label style="font-size: 0.9rem; color: var(--text-secondary); font-weight: 500;">Target Time (HH:MM:SS)</label>
-              <input type="text" id="target-time" value="${this.state.target_time}" placeholder="03:45:00" style="padding: 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: rgba(15, 23, 42, 0.4); color: white; font-size: 1rem;">
-            </div>
-          </div>
-
-          <!-- Custom Distance Input Container -->
-          <div id="custom-distance-container" style="display: ${this.state.race_distance === "custom" || (!["5k", "10k", "half marathon", "marathon"].includes(this.state.race_distance) && this.state.race_distance) ? "grid" : "none"}; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 0.5rem;">
-            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-              <label style="font-size: 0.9rem; color: var(--text-secondary); font-weight: 500;">Custom Distance Value</label>
-              <input type="number" id="custom-distance-val" step="0.1" min="0.1" value="${this.getCustomDistanceVal()}" placeholder="15" style="padding: 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: rgba(15, 23, 42, 0.4); color: white; font-size: 1rem;">
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-              <label style="font-size: 0.9rem; color: var(--text-secondary); font-weight: 500;">Custom Distance Unit</label>
-              <select id="custom-distance-unit" style="padding: 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: #1e293b; color: white; font-size: 1rem;">
-                <option value="miles" ${this.getCustomDistanceUnit() === "miles" ? "selected" : ""}>Miles (mi)</option>
-                <option value="km" ${this.getCustomDistanceUnit() === "km" ? "selected" : ""}>Kilometers (km)</option>
-              </select>
-            </div>
-          </div>
-
-          <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-            <label style="font-size: 0.9rem; color: var(--text-secondary); font-weight: 500;">Additional notes for your AI coach (optional)</label>
-            <textarea id="additional-notes" placeholder="e.g. I have a knee injury, I prefer trail running, I want to peak for the first 3 weeks..." style="padding: 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: rgba(15, 23, 42, 0.4); color: white; font-size: 1rem; min-height: 100px; resize: vertical; font-family: inherit; line-height: 1.5;">${this.state.additional_notes || ""}</textarea>
-          </div>
-
-          <div style="display: flex; justify-content: space-between; margin-top: 1.5rem;">
-            <button id="btn-back" class="btn btn-secondary"><i data-lucide="arrow-left"></i> Back</button>
-            <button id="btn-next-2" class="btn btn-primary">Next Step <i data-lucide="arrow-right"></i></button>
-          </div>
-        </div>
-      `;
-    }
-
-    if (this.state.step === 3) {
-      return `
         <h3 style="font-family: var(--font-display); font-size: 1.75rem; margin-bottom: 0.5rem;">Connect Your Apps</h3>
-        <p style="color: var(--text-secondary); margin-bottom: 2rem;">Link Strava to import your activity history and Garmin to push structured workouts to your watch. You can also do this later from your profile.</p>
+        <p style="color: var(--text-secondary); margin-bottom: 2rem;">Link Strava to import your activity history and Garmin to push structured workouts to your watch. You can always do this later from your profile.</p>
 
         <!-- Strava Section -->
         <div style="border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.5rem; margin-bottom: 1.5rem; background: rgba(255,255,255,0.02);">
@@ -244,9 +182,74 @@ export const OnboardingPage = {
           </div>
         </div>
 
-        <div style="display: flex; justify-content: space-between; margin-top: 1.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem;">
           <button id="btn-back" class="btn btn-secondary"><i data-lucide="arrow-left"></i> Back</button>
-          <button id="btn-generate" class="btn btn-primary">Generate Training Plan <i data-lucide="check"></i></button>
+          <div style="display: flex; gap: 0.75rem; align-items: center;">
+            <button id="btn-skip" class="btn btn-secondary" style="font-size: 0.9rem; color: var(--text-secondary);">Skip for now</button>
+            <button id="btn-next-2" class="btn btn-primary">Continue <i data-lucide="arrow-right"></i></button>
+          </div>
+        </div>
+      `;
+    }
+
+    if (this.state.step === 3) {
+      return `
+        <h3 style="font-family: var(--font-display); font-size: 1.75rem; margin-bottom: 0.5rem;">Race Goals</h3>
+        <p style="color: var(--text-secondary); margin-bottom: 2rem;">Gemini will search course details to tailor hill climbs, paces, and taper schedules.</p>
+        
+        <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+              <label style="font-size: 0.9rem; color: var(--text-secondary); font-weight: 500;">Race Name (Optional)</label>
+              <input type="text" id="race-name" value="${this.state.race_name}" placeholder="e.g., Boston Marathon" style="padding: 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: rgba(15, 23, 42, 0.4); color: white; font-size: 1rem;">
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+              <label style="font-size: 0.9rem; color: var(--text-secondary); font-weight: 500;">Race Date</label>
+              <input type="date" id="race-date" value="${this.state.race_date}" required style="padding: 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: rgba(15, 23, 42, 0.4); color: white; font-size: 1rem;">
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+              <label style="font-size: 0.9rem; color: var(--text-secondary); font-weight: 500;">Race Distance</label>
+              <select id="distance" style="padding: 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: #1e293b; color: white; font-size: 1rem;">
+                <option value="5k" ${this.state.race_distance === "5k" ? "selected" : ""}>5K</option>
+                <option value="10k" ${this.state.race_distance === "10k" ? "selected" : ""}>10K</option>
+                <option value="half marathon" ${this.state.race_distance === "half marathon" ? "selected" : ""}>Half Marathon</option>
+                <option value="marathon" ${this.state.race_distance === "marathon" ? "selected" : ""}>Marathon</option>
+                <option value="custom" ${this.state.race_distance === "custom" || (!["5k", "10k", "half marathon", "marathon"].includes(this.state.race_distance) && this.state.race_distance) ? "selected" : ""}>Custom Distance...</option>
+              </select>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+              <label style="font-size: 0.9rem; color: var(--text-secondary); font-weight: 500;">Target Time (HH:MM:SS)</label>
+              <input type="text" id="target-time" value="${this.state.target_time}" placeholder="03:45:00" style="padding: 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: rgba(15, 23, 42, 0.4); color: white; font-size: 1rem;">
+            </div>
+          </div>
+
+          <!-- Custom Distance Input Container -->
+          <div id="custom-distance-container" style="display: ${this.state.race_distance === "custom" || (!["5k", "10k", "half marathon", "marathon"].includes(this.state.race_distance) && this.state.race_distance) ? "grid" : "none"}; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 0.5rem;">
+            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+              <label style="font-size: 0.9rem; color: var(--text-secondary); font-weight: 500;">Custom Distance Value</label>
+              <input type="number" id="custom-distance-val" step="0.1" min="0.1" value="${this.getCustomDistanceVal()}" placeholder="15" style="padding: 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: rgba(15, 23, 42, 0.4); color: white; font-size: 1rem;">
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+              <label style="font-size: 0.9rem; color: var(--text-secondary); font-weight: 500;">Custom Distance Unit</label>
+              <select id="custom-distance-unit" style="padding: 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: #1e293b; color: white; font-size: 1rem;">
+                <option value="miles" ${this.getCustomDistanceUnit() === "miles" ? "selected" : ""}>Miles (mi)</option>
+                <option value="km" ${this.getCustomDistanceUnit() === "km" ? "selected" : ""}>Kilometers (km)</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+            <label style="font-size: 0.9rem; color: var(--text-secondary); font-weight: 500;">Additional notes for your AI coach (optional)</label>
+            <textarea id="additional-notes" placeholder="e.g. I have a knee injury, I prefer trail running, I want to peak for the first 3 weeks..." style="padding: 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: rgba(15, 23, 42, 0.4); color: white; font-size: 1rem; min-height: 100px; resize: vertical; font-family: inherit; line-height: 1.5;">${this.state.additional_notes || ""}</textarea>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; margin-top: 1.5rem;">
+            <button id="btn-back" class="btn btn-secondary"><i data-lucide="arrow-left"></i> Back</button>
+            <button id="btn-generate" class="btn btn-primary">Generate Training Plan <i data-lucide="check"></i></button>
+          </div>
         </div>
       `;
     }
@@ -263,51 +266,32 @@ export const OnboardingPage = {
       this.state.step = 2;
       this.updateView();
     } else if (fromStep === 2) {
-      // Save race goals state then proceed to integrations step
-      this.state.race_name = document.getElementById("race-name").value;
-      this.state.race_date = document.getElementById("race-date").value;
-      const distSelect = document.getElementById("distance").value;
-      if (distSelect === "custom") {
-        const val = parseFloat(document.getElementById("custom-distance-val").value);
-        const unit = document.getElementById("custom-distance-unit").value;
-        if (!isNaN(val) && val > 0) this.state.race_distance = `${val} ${unit}`;
-      } else {
-        this.state.race_distance = distSelect;
-      }
-      this.state.target_time = document.getElementById("target-time").value;
-      const notesEl = document.getElementById("additional-notes");
-      if (notesEl) this.state.additional_notes = notesEl.value;
-      if (!this.state.race_date) {
-        window.showToast("Race date is required", "error");
-        return;
-      }
+      // Step 2 is Connect Apps — nothing to read, just advance to Race Goals
       this.state.step = 3;
       this.updateView();
     }
   },
 
   handleBack() {
-    if (this.state.step === 2) {
-      this.state.race_name = document.getElementById("race-name").value;
-      this.state.race_date = document.getElementById("race-date").value;
-      
-      const distSelect = document.getElementById("distance").value;
-      if (distSelect === "custom") {
-        const val = parseFloat(document.getElementById("custom-distance-val").value);
-        const unit = document.getElementById("custom-distance-unit").value;
-        if (!isNaN(val) && val > 0) {
-          this.state.race_distance = `${val} ${unit}`;
+    if (this.state.step === 3) {
+      // Leaving Race Goals (step 3) — save current values so they're retained
+      this.state.race_name = document.getElementById("race-name")?.value ?? this.state.race_name;
+      this.state.race_date = document.getElementById("race-date")?.value ?? this.state.race_date;
+      const distSelect = document.getElementById("distance");
+      if (distSelect) {
+        if (distSelect.value === "custom") {
+          const val = parseFloat(document.getElementById("custom-distance-val")?.value);
+          const unit = document.getElementById("custom-distance-unit")?.value || "miles";
+          if (!isNaN(val) && val > 0) this.state.race_distance = `${val} ${unit}`;
+        } else {
+          this.state.race_distance = distSelect.value;
         }
-      } else {
-        this.state.race_distance = distSelect;
       }
-      this.state.target_time = document.getElementById("target-time").value;
-      
+      this.state.target_time = document.getElementById("target-time")?.value ?? this.state.target_time;
       const notesEl = document.getElementById("additional-notes");
-      if (notesEl) {
-        this.state.additional_notes = notesEl.value;
-      }
+      if (notesEl) this.state.additional_notes = notesEl.value;
     }
+    // Step 2 (Connect Apps) — nothing to save, just go back
     if (this.state.step > 1) {
       this.state.step -= 1;
       this.updateView();
@@ -428,6 +412,8 @@ export const OnboardingPage = {
 
     if (btnNext)  btnNext.onclick  = () => this.handleNext(1);
     if (btnNext2) btnNext2.onclick = () => this.handleNext(2);
+    const btnSkip = document.getElementById("btn-skip");
+    if (btnSkip)  btnSkip.onclick  = () => this.handleNext(2);
     if (btnBack)  btnBack.onclick  = () => this.handleBack();
     if (btnGenerate) btnGenerate.onclick = () => this.handleGeneratePlan(navigateTo);
 
@@ -440,7 +426,7 @@ export const OnboardingPage = {
       };
     }
 
-    // Step 3 — Strava save
+    // Step 2 — Strava save
     const btnSaveStrava = document.getElementById("btn-save-strava");
     if (btnSaveStrava) {
       btnSaveStrava.onclick = async (e) => {
@@ -467,7 +453,7 @@ export const OnboardingPage = {
       };
     }
 
-    // Step 3 — Garmin save
+    // Step 2 — Garmin save
     const btnSaveGarmin = document.getElementById("btn-save-garmin");
     if (btnSaveGarmin) {
       btnSaveGarmin.onclick = async (e) => {
