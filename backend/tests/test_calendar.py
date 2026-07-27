@@ -135,6 +135,10 @@ def test_move_session_and_rebalance(mock_genai_client, mock_lookup, client):
     assert detail_data["name"] == "Speedwork"
     assert "safety_alternative" in detail_data
     assert "medical_disclaimer" in detail_data
+    
+    # Verify dynamic fallback parser from garmin instructions
+    assert len(detail_data["main_set"]) > 0
+    assert detail_data["main_set"][0] == "Run 4x400m hard"
 
     # Setup mock Gemini client response for rebalance
     mock_rebalance_response = MagicMock()

@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, Integer, Float, DateTime, ForeignKey
+from sqlalchemy import Column, String, Integer, Float, DateTime, ForeignKey, Text
 from sqlalchemy.orm import relationship
 from src.models import Base
 
@@ -15,6 +15,7 @@ class ConnectedAccount(Base):
     expires_at = Column(DateTime, nullable=False)
     scopes = Column(String(255), nullable=True)
     last_sync_at = Column(DateTime, nullable=True)
+    garth_tokens = Column(Text, nullable=True)  # Cached garminconnect session tokens (JSON)
 
     # Relationships
     user = relationship("User", back_populates="connected_accounts")

@@ -104,6 +104,14 @@ def get_profile(
     db: Session = Depends(get_db)
 ):
     profile = current_user.profile
+    
+    # Check connected accounts
+    strava_connected = any(acc.provider == "strava" for acc in current_user.connected_accounts)
+    
+    garmin_acc = next((acc for acc in current_user.connected_accounts if acc.provider == "garmin"), None)
+    garmin_connected = garmin_acc is not None
+    garmin_email = garmin_acc.access_token if garmin_acc else None
+    
     return {
         "name": current_user.name,
         "email": current_user.email,
@@ -115,7 +123,11 @@ def get_profile(
         "vo2_max": profile.vo2_max if profile else None,
         "strava_client_id": profile.strava_client_id if profile else None,
         "strava_client_secret": profile.strava_client_secret if profile else None,
+        "strava_connected": strava_connected,
+        "garmin_connected": garmin_connected,
+        "garmin_email": garmin_email
     }
+
 
 @router.put("/profile")
 def update_profile(

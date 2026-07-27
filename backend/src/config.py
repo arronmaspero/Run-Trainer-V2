@@ -19,5 +19,7 @@ class Settings:
     STRAVA_CLIENT_ID: str = os.getenv("STRAVA_CLIENT_ID", "")
     STRAVA_CLIENT_SECRET: str = os.getenv("STRAVA_CLIENT_SECRET", "")
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./running_coach.db")
+    GARMIN_ENCRYPTION_KEY: str = os.getenv("GARMIN_ENCRYPTION_KEY", "blYpXR_IpKxpiJWaQ_SldsV90h-hXYQfMwtTfHMl4jg=")
 
 settings = Settings()
+
