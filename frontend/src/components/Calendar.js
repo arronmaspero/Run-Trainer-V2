@@ -145,7 +145,16 @@ export const Calendar = {
           const distStr = s.distance_miles ? ` | ${window.formatDistance(s.distance_miles)}` : "";
           
           let statusBadge = "";
-          if (s.status === "completed") {
+          const isRestDay = s.type.toLowerCase() === "rest";
+
+          if (isRestDay && (s.status === "completed" || s.status === "skipped")) {
+            // Rest days aren't "completed" or "skipped" — they're "rested"
+            statusBadge = `
+              <span class="workout-status-badge rested" style="background: rgba(99, 102, 241, 0.12); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.25); padding: 0.1rem 0.4rem; border-radius: 4px; font-size: 0.7rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.2rem;">
+                <i data-lucide="moon" style="width: 10px; height: 10px;"></i> Rested
+              </span>
+            `;
+          } else if (s.status === "completed") {
             statusBadge = `
               <span class="workout-status-badge completed" style="background: rgba(16, 185, 129, 0.15); color: var(--color-easy); border: 1px solid rgba(16, 185, 129, 0.3); padding: 0.1rem 0.4rem; border-radius: 4px; font-size: 0.7rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.2rem;">
                 <i data-lucide="check" style="width: 10px; height: 10px;"></i> Completed
@@ -158,6 +167,7 @@ export const Calendar = {
               </span>
             `;
           }
+
 
           html += `
             <div class="workout-card" 
