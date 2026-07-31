@@ -36,9 +36,9 @@ def test_format_garmin_workout_empty_sets():
         main_set=[],
         cool_down=[]
     )
-    assert "Warm Up: 5-10 minutes easy jogging." in result
     assert "Run: Steady pace." in result
-    assert "Cool Down: 5-10 minutes easy recovery jog." in result
+    assert "Warm Up" not in result
+    assert "Cool Down" not in result
 
 # -------------------------------------------------------------
 # Garmin Service Integration Tests

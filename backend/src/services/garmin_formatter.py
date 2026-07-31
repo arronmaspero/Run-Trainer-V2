@@ -16,16 +16,16 @@ def format_garmin_workout(
     steps.append(f"Manual Garmin Connect Workout Setup for '{name}':")
     steps.append("")
     
+    step_num = 1
     if warm_up:
-        steps.append("1. Warm Up:")
+        steps.append(f"{step_num}. Warm Up:")
         for step in warm_up:
             steps.append(f"   - {step}")
-    else:
-        steps.append("1. Warm Up: 5-10 minutes easy jogging.")
+        steps.append("")
+        step_num += 1
         
-    steps.append("")
     if main_set:
-        steps.append("2. Run (Main Set):")
+        steps.append(f"{step_num}. Run (Main Set):")
         for step in main_set:
             steps.append(f"   - {step}")
         if target_pace_range and target_pace_range != "N/A":
@@ -34,15 +34,17 @@ def format_garmin_workout(
             steps.append(f"   - Target Heart Rate: {target_hr_zone}")
         if target_rpe:
             steps.append(f"   - Target Effort (RPE): {target_rpe}/10")
+        steps.append("")
+        step_num += 1
     else:
-        steps.append("2. Run: Steady pace.")
+        steps.append(f"{step_num}. Run: Steady pace.")
+        steps.append("")
+        step_num += 1
         
-    steps.append("")
     if cool_down:
-        steps.append("3. Cool Down:")
+        steps.append(f"{step_num}. Cool Down:")
         for step in cool_down:
             steps.append(f"   - {step}")
-    else:
-        steps.append("3. Cool Down: 5-10 minutes easy recovery jog.")
+        steps.append("")
         
-    return "\n".join(steps)
+    return "\n".join(steps).strip()

@@ -1,3 +1,4 @@
+from datetime import date
 from unittest.mock import patch, MagicMock
 from src.models.plan import TrainingPlan, TrainingSession
 
@@ -296,15 +297,16 @@ def test_update_plan_workflow(mock_genai_client, mock_lookup, client):
     token = login_resp.json()["session_token"]
 
     # Mock Plan Generation response
+    today_str = date.today().isoformat()
     mock_lookup.return_value = "Grounding course details"
     mock_gen_response = MagicMock()
-    mock_gen_response.text = """
-    {
+    mock_gen_response.text = f"""
+    {{
       "weeks_count": 1,
       "total_mileage": 5.0,
       "sessions": [
-        {
-          "date": "2026-07-20",
+        {{
+          "date": "{today_str}",
           "type": "Easy",
           "name": "Initial Easy Run",
           "description": "Easy run",
@@ -317,18 +319,18 @@ def test_update_plan_workflow(mock_genai_client, mock_lookup, client):
           "target_hr_zone": "Zone 2",
           "target_rpe": 5,
           "garmin_instructions_text": "Run easy"
-        }
+        }}
       ]
-    }
+    }}
     """
     
     mock_update_response = MagicMock()
-    mock_update_response.text = """
-    {
+    mock_update_response.text = f"""
+    {{
       "explanation": "I adapted your future plan by scaling down mileage and adjusting pace.",
       "sessions": [
-        {
-          "date": "2026-07-20",
+        {{
+          "date": "{today_str}",
           "type": "Easy",
           "name": "Adapted Easy Run",
           "description": "Short easy recovery run",
@@ -341,9 +343,9 @@ def test_update_plan_workflow(mock_genai_client, mock_lookup, client):
           "target_hr_zone": "Zone 2",
           "target_rpe": 4,
           "garmin_instructions_text": "Run easy for 3 miles"
-        }
+        }}
       ]
-    }
+    }}
     """
 
     mock_model_service = MagicMock()
@@ -364,7 +366,7 @@ def test_update_plan_workflow(mock_genai_client, mock_lookup, client):
             "long_run_day": "Sunday",
             "unavailable_days": "Monday,Wednesday",
             "race_name": "Test Race",
-            "race_date": "2026-07-20",
+            "race_date": today_str,
             "race_distance": "5k",
             "style": "balanced"
         }

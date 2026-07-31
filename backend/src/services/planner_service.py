@@ -115,8 +115,11 @@ def generate_ai_training_plan(
         f"3. Do not increase weekly mileage by more than 10% compared to the previous week.\n"
         f"4. Schedule quality runs (Intervals/Tempo) on available days. Never back-to-back hard runs.\n"
         f"5. Ensure long runs are placed on {long_run_day}.\n"
-        f"6. Make sure to generate Garmin manual creation steps for each non-rest session.\n"
-        f"7. Style must match the selected training style ({style}).\n"
+        f"6. WARM-UP & COOL-DOWN RULES:\n"
+        f"   - For Easy, Recovery, and Long Run sessions: MUST NOT contain any warm-up or cool-down steps (set warm_up = [], cool_down = []). The entire session distance/duration is a single continuous main_set run at target pace.\n"
+        f"   - For Quality sessions (Intervals, Tempo, Fartlek, Hill Repeats, Speedwork): MUST include structured warm-up and cool-down running/jogging steps in warm_up, main_set, cool_down, and garmin_instructions_text.\n"
+        f"7. Make sure to generate Garmin manual creation steps for each non-rest session.\n"
+        f"8. Style must match the selected training style ({style}).\n"
     )
 
     if additional_notes and additional_notes.strip():
@@ -302,8 +305,11 @@ def preview_plan_update(
         f"Your Task:\n"
         f"1. Generate the updated list of training sessions for all remaining days from {today_val.isoformat()} to the plan end date {plan.end_date.isoformat()}.\n"
         f"2. You must generate a session for EVERY single day in this future range. Rest days should be explicitly set (type='Rest', name='Rest Day', distance_miles=0.0).\n"
-        f"3. Apply the difficulty adaptations (reducing/increasing volume and intensity) and strictly honor any custom request comments (e.g. rescheduling to different days, or formatting changes).\n"
-        f"4. Provide a clear, encouraging 2-3 sentence coaching explanation of what you updated and why (e.g., 'I scaled down your Wednesday intervals by 15% to help your legs recover, and shifted your long runs to Saturdays as requested. Keep up the good work!')."
+        f"3. WARM-UP & COOL-DOWN RULES:\n"
+        f"   - For Easy, Recovery, and Long Run sessions: MUST NOT contain any warm-up or cool-down steps (set warm_up = [], cool_down = []). The entire session distance/duration is a single continuous main_set run at target pace.\n"
+        f"   - For Quality sessions (Intervals, Tempo, Fartlek, Hill Repeats, Speedwork): MUST include structured warm-up and cool-down running/jogging steps in warm_up, main_set, cool_down, and garmin_instructions_text.\n"
+        f"4. Apply the difficulty adaptations (reducing/increasing volume and intensity) and strictly honor any custom request comments (e.g. rescheduling to different days, or formatting changes).\n"
+        f"5. Provide a clear, encouraging 2-3 sentence coaching explanation of what you updated and why (e.g., 'I scaled down your Wednesday intervals by 15% to help your legs recover, and shifted your long runs to Saturdays as requested. Keep up the good work!')."
     )
 
     client = get_gemini_client()
