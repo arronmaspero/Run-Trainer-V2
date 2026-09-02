@@ -75,10 +75,10 @@ def build_athlete_context(user_id: str, db: Session) -> Dict[str, Any]:
 
     eval_list = [{"week_number": e.week_number, "commentary": e.commentary} for e in evaluations]
     act_list = [{
-        "name": a.name,
-        "date": a.start_date.isoformat() if a.start_date else "N/A",
-        "distance_miles": round(a.distance_meters / 1609.34, 2) if a.distance_meters else 0.0,
-        "moving_time_mins": round(a.moving_time_seconds / 60, 1) if a.moving_time_seconds else 0
+        "name": getattr(a, "name", None) or "Run",
+        "date": a.start_date.isoformat() if getattr(a, "start_date", None) else "N/A",
+        "distance_miles": round(a.distance_miles, 2) if getattr(a, "distance_miles", None) else 0.0,
+        "moving_time_mins": round(a.moving_time_seconds / 60, 1) if getattr(a, "moving_time_seconds", None) else 0
     } for a in activities]
 
     return {

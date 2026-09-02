@@ -28,18 +28,19 @@ def test_coach_chat_endpoints(mock_get_gemini, client, db):
     )
     db.add(plan)
 
-    session = TrainingSession(
-        id="session-chat-1",
-        plan_id="plan-chat-1",
-        date=date.today() + timedelta(days=1),
-        type="Tempo",
-        name="Tempo Run",
-        description="Run 4 miles at tempo pace",
-        duration_minutes=40,
-        distance_miles=4.0,
-        status="planned"
+    from datetime import datetime
+    from src.models.activity import Activity
+    act = Activity(
+        id="act-chat-1",
+        user_id=user_id,
+        name="Morning Tempo Run",
+        type="run",
+        start_date=datetime.utcnow(),
+        distance_miles=6.2,
+        moving_time_seconds=2700,
+        elapsed_time_seconds=2800
     )
-    db.add(session)
+    db.add(act)
     db.commit()
 
     # 3. Test empty chat history GET
