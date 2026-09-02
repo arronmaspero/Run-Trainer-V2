@@ -165,10 +165,12 @@ def handle_user_chat_message(user_id: str, message_text: str, db: Session) -> Di
         "CONVERSATION RULES:\n"
         "1. Be warm, supportive, evidence-based, and encouraging.\n"
         "2. Keep responses clear and readable (use short bullet points or paragraph breaks).\n"
-        "3. If the athlete asks questions or expresses preferences (e.g. shift long run day, lighten Thursdays, focus on 10k pace), "
+        "3. If the athlete asks questions or expresses preferences (e.g. shift long run day, lighten Thursdays, focus on 10k pace, target a faster/slower race time or pace), "
         "explain the coaching tradeoffs and clearly propose specific changes to their schedule.\n"
-        "4. If you and the runner reach an agreement or if the runner asks you to update/change their plan, explicitly summarize the agreed changes in your message.\n"
-        "5. Respond directly in character as the AI Coach."
+        "4. CRITICAL RULE: You CANNOT modify the calendar database directly during chat. Do NOT state 'I have updated your plan' or 'I changed your calendar'. "
+        "Instead, state that you recommend/propose these specific changes, and tell the runner: 'If you are happy with these changes, click the **Apply Agreed Plan Changes** button below to update your calendar.'\n"
+        "5. When proposing or agreeing on changes, provide a clear, bulleted 'Proposed Plan Modifications' list detailing the exact workout structure, target pace, target time, or day shift changes.\n"
+        "6. Respond directly in character as the AI Coach."
     )
 
     full_prompt = (
@@ -191,7 +193,7 @@ def handle_user_chat_message(user_id: str, message_text: str, db: Session) -> Di
     # Detect if AI coach is summarizing/proposing concrete plan changes
     # We flag proposed changes if keywords indicate a clear plan modification proposal
     lower_reply = ai_reply_text.lower()
-    has_proposed_changes = any(k in lower_reply for k in ["agreed", "i will update", "i can change", "propose", "suggest updating", "adjusting your plan", "reschedule"])
+    has_proposed_changes = any(k in lower_reply for k in ["propose", "suggest updating", "adjusting your plan", "reschedule", "apply agreed plan changes", "modifications", "target time", "target pace", "race pace"])
 
     # 4. Save AI coach response in DB
     coach_msg = ChatMessage(
@@ -221,18 +223,47 @@ def apply_chat_discussed_changes(user_id: str, db: Session) -> Dict[str, Any]:
     if not history:
         raise Exception("No conversation history found to derive plan changes.")
 
-    # Collect user & coach chat excerpts
-    recent_dialogue = [f"{m.sender.upper()}: {m.text}" for m in history[-8:]]
-    summary_comments = (
-        "Apply agreed changes discussed in AI Coach conversation:\n" +
-        "\n".join(recent_dialogue)
+    # Synthesize conversation with Gemini to get clean, explicit plan adaptation instructions
+    recent_dialogue = [f"{m.sender.upper()}: {m.text}" for m in history[-10:]]
+    synthesis_prompt = (
+        "You are an expert running coach assistant. Analyze this conversation history between an athlete and their AI Coach:\n\n"
+        f"{'\n'.join(recent_dialogue)}\n\n"
+        "Extract and format ALL agreed-upon modifications to the training plan into a clear, high-priority instruction list for updating the calendar.\n"
+        "Include any target time goals (e.g., aiming for 1:33:00 half marathon), target pace ranges, workout structure modifications (e.g. adding race pace finish segments to long runs), or day shifts."
     )
+
+    client = get_gemini_client()
+    try:
+        synth_res = client.models.generate_content(
+            model="gemini-3.5-flash",
+            contents=synthesis_prompt
+        )
+        agreed_summary = synth_res.text.strip()
+    except Exception:
+        agreed_summary = "\n".join(recent_dialogue)
+
+    # Check if a new target race time in HH:MM:SS format was agreed upon
+    import re
+    time_match = re.search(r'\b(\d{1,2}:\d{2}:\d{2})\b', agreed_summary)
+    if time_match:
+        try:
+            parts = time_match.group(1).split(":")
+            new_secs = int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
+            plan = db.query(TrainingPlan).filter(
+                TrainingPlan.user_id == user_id,
+                TrainingPlan.status == "active"
+            ).first()
+            if plan:
+                plan.target_time_seconds = new_secs
+                db.commit()
+        except Exception:
+            pass
 
     # Use existing apply_plan_update service which uses Gemini to adapt future sessions
     updated_plan = apply_plan_update(
         user_id=user_id,
         difficulty_feedback="normal",
-        user_comments=summary_comments,
+        user_comments=agreed_summary,
         db=db
     )
 

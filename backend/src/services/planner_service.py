@@ -287,11 +287,19 @@ def preview_plan_update(
 
     comments_instruction = f"User Request Comments:\n\"{user_comments}\"\n" if user_comments else "No specific comments/requests were provided."
 
+    target_time_str = "N/A"
+    if plan.target_time_seconds:
+        hrs = plan.target_time_seconds // 3600
+        mins = (plan.target_time_seconds % 3600) // 60
+        secs = plan.target_time_seconds % 60
+        target_time_str = f"{hrs:02d}:{mins:02d}:{secs:02d}"
+
     prompt = (
         f"You are a professional, evidence-informed running coach adapting an active training plan.\n"
         f"Today's date is: {today_val.isoformat()}\n"
         f"Plan details:\n"
         f"- Target Goal: {plan.race_distance_miles} miles. Name: {plan.race_name or 'N/A'}. Date: {plan.race_date.isoformat() if plan.race_date else 'N/A'}.\n"
+        f"- Target Time Goal: {target_time_str}\n"
         f"- Style: {plan.style}\n"
         f"- Start Date: {plan.start_date.isoformat()} to End Date: {plan.end_date.isoformat()}\n\n"
         f"Course & Race Grounding Details:\n{race_info}\n\n"
@@ -308,8 +316,8 @@ def preview_plan_update(
         f"3. WARM-UP & COOL-DOWN RULES:\n"
         f"   - For Easy, Recovery, and Long Run sessions: MUST NOT contain any warm-up or cool-down steps (set warm_up = [], cool_down = []). The entire session distance/duration is a single continuous main_set run at target pace.\n"
         f"   - For Quality sessions (Intervals, Tempo, Fartlek, Hill Repeats, Speedwork): MUST include structured warm-up and cool-down running/jogging steps in warm_up, main_set, cool_down, and garmin_instructions_text.\n"
-        f"4. Apply the difficulty adaptations (reducing/increasing volume and intensity) and strictly honor any custom request comments (e.g. rescheduling to different days, or formatting changes).\n"
-        f"5. Provide a clear, encouraging 2-3 sentence coaching explanation of what you updated and why (e.g., 'I scaled down your Wednesday intervals by 15% to help your legs recover, and shifted your long runs to Saturdays as requested. Keep up the good work!')."
+        f"4. Apply the difficulty adaptations and STRICTLY HONOR all user request comments and agreed modifications (e.g. updating target race pace, incorporating race-pace segments into long runs, adjusting workout intensity/duration, or rescheduling days).\n"
+        f"5. Provide a clear, encouraging 2-3 sentence coaching explanation of what you updated and why."
     )
 
     client = get_gemini_client()
