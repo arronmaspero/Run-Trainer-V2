@@ -258,5 +258,33 @@ export const api = {
       headers: getHeaders()
     });
     return handleResponse(res, "Failed to clear Garmin calendar");
+  },
+
+  // AI Coach Chat API
+  async getChatHistory() {
+    const res = await fetch(`${API_BASE}/chat/history`, {
+      cache: "no-store",
+      headers: getHeaders()
+    });
+    return handleResponse(res, "Failed to load chat history");
+  },
+
+  async sendChatMessage(message) {
+    const res = await fetch(`${API_BASE}/chat/message`, {
+      method: "POST",
+      cache: "no-store",
+      headers: getHeaders(),
+      body: JSON.stringify({ message })
+    });
+    return handleResponse(res, "Failed to send chat message");
+  },
+
+  async applyChatPlanChanges() {
+    const res = await fetch(`${API_BASE}/chat/apply-changes`, {
+      method: "POST",
+      cache: "no-store",
+      headers: getHeaders()
+    });
+    return handleResponse(res, "Failed to apply plan changes from chat");
   }
 };

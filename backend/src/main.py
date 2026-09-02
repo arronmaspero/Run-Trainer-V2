@@ -9,6 +9,7 @@ from src.api.plans import router as plans_router
 from src.api.calendar import router as calendar_router
 from src.api.sessions import router as sessions_router
 from src.api.settings import router as settings_router
+from src.api.chat import router as chat_router
 
 app = FastAPI(
     title="AI-Powered Running Coach",
@@ -22,6 +23,7 @@ app.include_router(plans_router, prefix="/api/v1")
 app.include_router(calendar_router, prefix="/api/v1")
 app.include_router(sessions_router, prefix="/api/v1")
 app.include_router(settings_router, prefix="/api/v1")
+app.include_router(chat_router, prefix="/api/v1")
 
 @app.middleware("http")
 async def add_no_cache_headers(request: Request, call_next):

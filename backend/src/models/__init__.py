@@ -17,6 +17,7 @@ from src.models.user import User, AthleteProfile
 from src.models.activity import ConnectedAccount, Activity
 from src.models.plan import TrainingPlan, TrainingSession, WeeklyEvaluation
 from src.models.changelog import PlanChangeLog
+from src.models.chat_message import ChatMessage
 
 # Create all tables in the database
 Base.metadata.create_all(bind=engine)

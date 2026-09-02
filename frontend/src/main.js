@@ -6,9 +6,11 @@ import { ProfilePage } from "./pages/ProfilePage.js?v=2";
 import { SessionDetailPage } from "./pages/SessionDetailPage.js?v=2";
 import { StravaDrawer } from "./components/StravaDrawer.js";
 import { UpdatePlanDialog } from "./components/UpdatePlanDialog.js";
+import { AICoachChatDialog } from "./components/AICoachChatDialog.js";
 
 window.CurrentPlanPage = window.DashboardPage = CurrentPlanPage;
 window.UpdatePlanDialog = UpdatePlanDialog;
+window.AICoachChatDialog = AICoachChatDialog;
 
 // Unit Preference Helpers
 window.formatLocalDate = (dateObj) => {

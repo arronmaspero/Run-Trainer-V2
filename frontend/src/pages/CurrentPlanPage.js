@@ -302,12 +302,17 @@ export const CurrentPlanPage = {
 
         <!-- AI Insight Panel -->
         <div class="card glass-panel" style="padding: 2rem; border-left: 5px solid var(--accent-primary); background: rgba(30, 41, 59, 0.45);">
-          <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
-            <i data-lucide="sparkles" style="color: var(--accent-secondary); width: 24px; height: 24px;"></i>
-            <h3 style="font-family: var(--font-display); font-size: 1.35rem; font-weight: 700;">Coach's AI Recommendation</h3>
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem;">
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+              <i data-lucide="sparkles" style="color: var(--accent-secondary); width: 24px; height: 24px;"></i>
+              <h3 style="font-family: var(--font-display); font-size: 1.35rem; font-weight: 700;">Coach's AI Recommendation</h3>
+            </div>
+            <button onclick="window.AICoachChatDialog && window.AICoachChatDialog.show()" class="btn btn-primary" style="font-size: 0.95rem; padding: 0.6rem 1.25rem; display: inline-flex; align-items: center; gap: 0.5rem; background: var(--gradient-premium); box-shadow: var(--shadow-md);">
+              <i data-lucide="message-square" style="width: 18px; height: 18px;"></i> Chat with AI Coach
+            </button>
           </div>
-          <p style="color: var(--text-primary); font-size: 1.05rem; line-height: 1.6;">
-            "Welcome to AuraRun! Your training plan has been custom generated to safely scale your training block. Drag calendar workouts to customize your training schedule, or click on any workout card to open its target details and Garmin watch instructions."
+          <p style="color: var(--text-primary); font-size: 1.05rem; line-height: 1.6; margin: 0;">
+            "Welcome to AuraRun! Your training plan has been custom generated to safely scale your training block. Click 'Chat with AI Coach' to discuss training adjustments, schedule preferences, or fatigue anytime!"
           </p>
         </div>
 
@@ -316,9 +321,14 @@ export const CurrentPlanPage = {
 
         <!-- Action Buttons Row -->
         <div style="display: flex; justify-content: center; align-items: center; gap: 1rem; flex-wrap: wrap; margin-top: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 2rem;">
-          <a href="#onboarding" class="btn btn-primary" style="font-size: 1.05rem; padding: 0.8rem 2rem; display: inline-flex; align-items: center; gap: 0.5rem; background: var(--gradient-premium); box-shadow: var(--shadow-md);">
-            <i data-lucide="plus-circle" style="width: 20px; height: 20px;"></i> Generate New Plan
+          <button onclick="window.AICoachChatDialog && window.AICoachChatDialog.show()" class="btn btn-primary" style="font-size: 1.05rem; padding: 0.8rem 2rem; display: inline-flex; align-items: center; gap: 0.5rem; background: var(--gradient-premium); box-shadow: var(--shadow-md);">
+            <i data-lucide="message-square" style="width: 20px; height: 20px;"></i> Chat with AI Coach
+          </button>
+          
+          <a href="#onboarding" class="btn btn-secondary" style="font-size: 1rem; padding: 0.8rem 1.75rem; display: inline-flex; align-items: center; gap: 0.5rem;">
+            <i data-lucide="plus-circle" style="width: 18px; height: 18px;"></i> Generate New Plan
           </a>
+          
           <button onclick="window.StravaDrawer && window.StravaDrawer.show()" style="
             font-size: 1rem; padding: 0.8rem 1.75rem;
             display: inline-flex; align-items: center; gap: 0.6rem;
